@@ -1,0 +1,15 @@
+# что не нужно в образе
+.git
+.gitignore
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+*.pcapng
+*.pcap
+reports/
+tests/
+.venv
+venv/
+Dockerfile
+.dockerignore
