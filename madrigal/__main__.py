@@ -37,28 +37,47 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from . import __version__
 from .capture import CaptureError, open_capture
 from .corpus import CorpusError, check_report, verify_corpus
 from .interpreter import analyze_session, dir_result_to_dict, hyp_check_to_dict
 from .layers import parse_capture, parse_packet, tcp_flags_str
+from .limits import (
+    LimitExceeded,
+    Limits,
+    check_capture,
+    check_messages,
+    file_size,
+    get_profile,
+)
 from .project import ProjectError
 from .reassembly import build_stream
 from .schema import SchemaError, load_schema_file
 from .sessions import build_sessions, sessions_summary
 
 
-def _load(path: str):
+def _load(path: str, limits: Optional[Limits] = None):
+    # защитная проверка размера — до чтения файла в память
+    if limits is not None and limits.file_bytes is not None:
+        violations = check_capture(limits, file_bytes=file_size(path))
+        if violations:
+            raise LimitExceeded(limits, violations)
     cap = open_capture(path)
     parsed = parse_capture(cap)
     timestamps = [p.timestamp for p in cap.packets]
     sessions = build_sessions(timestamps, parsed)
+    if limits is not None:
+        violations = check_capture(limits, packets=len(cap.packets),
+                                   sessions=len(sessions))
+        if violations:
+            raise LimitExceeded(limits, violations)
     return cap, parsed, timestamps, sessions
 
 
 def cmd_info(args: argparse.Namespace) -> int:
-    cap, parsed, _ts, sessions = _load(args.file)
+    cap, parsed, _ts, sessions = _load(args.file, get_profile(args.limits))
 
     errors = sum(1 for p in parsed if p.error)
     warns = sum(1 for p in parsed if p.warnings)
@@ -88,7 +107,7 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 
 def cmd_stream(args: argparse.Namespace) -> int:
-    cap, parsed, ts, sessions = _load(args.file)
+    cap, parsed, ts, sessions = _load(args.file, get_profile(args.limits))
     if args.session < 0 or args.session >= len(sessions):
         print(f"нет сессии #{args.session} (всего {len(sessions)})", file=sys.stderr)
         return 2
@@ -112,6 +131,11 @@ def cmd_stream(args: argparse.Namespace) -> int:
 
 
 def cmd_packet(args: argparse.Namespace) -> int:
+    limits = get_profile(args.limits)
+    if limits.file_bytes is not None:
+        violations = check_capture(limits, file_bytes=file_size(args.file))
+        if violations:
+            raise LimitExceeded(limits, violations)
     cap = open_capture(args.file)
     if args.index < 0 or args.index >= len(cap.packets):
         print(f"нет пакета #{args.index} (всего {len(cap.packets)})", file=sys.stderr)
@@ -149,7 +173,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    cap, parsed, ts, sessions = _load(args.file)
+    cap, parsed, ts, sessions = _load(args.file, get_profile(args.limits))
     if args.session is not None:
         if not 0 <= args.session < len(sessions):
             print(f"нет сессии #{args.session} (всего {len(sessions)})",
@@ -160,6 +184,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         indices = list(range(len(sessions)))
 
     directions = schema.scope_directions or ["a2b", "b2a"]
+    limits = get_profile(args.limits)
     print(f"схема: {schema.name} (sha256 {schema.sha256[:12]}…, "
           f"правил: {len(schema.messages)}, гипотез: {len(schema.hypotheses)})")
     print(f"файл:  {Path(cap.path).name} — сессий {len(sessions)}, "
@@ -178,6 +203,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
     }
     hyp_totals: Counter = Counter()
     any_refuted = False
+    messages_total = 0
 
     for idx in indices:
         s = sessions[idx]
@@ -186,6 +212,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
             # направление, которого нет в потоке, analyze_session отметит сам
             streams[d] = build_stream(ts, parsed, s, d)
         results, hyps = analyze_session(schema, streams)
+        messages_total += sum(
+            st.stats["messages"] for st in results.values() if st.scope_ok)
 
         print(f"\nсессия {idx}: A {s.a_label} / B {s.b_label}")
         for d in directions:
@@ -234,6 +262,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
         parts = [f"{k}={v}" for k, v in sorted(hyp_totals.items())]
         print(f"\nитог по гипотезам: {', '.join(parts)}")
 
+    # защитный предел по числу сообщений: отказ явный, без тихого усечения
+    violations = check_messages(limits, messages_total)
+    if violations:
+        raise LimitExceeded(limits, violations)
+
     if args.out:
         Path(args.out).write_text(
             json.dumps(out_payload, ensure_ascii=False, indent=2),
@@ -246,7 +279,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
 def cmd_verify(args: argparse.Namespace) -> int:
     """Проверить интерпретацию по корпусу записей (R4)."""
     try:
-        report = verify_corpus(args.corpus, schema_override=args.schema)
+        report = verify_corpus(args.corpus, schema_override=args.schema,
+                               limits=get_profile(args.limits))
     except CorpusError as e:
         print("корпус не прошёл проверку:", file=sys.stderr)
         for err in e.errors:
@@ -509,6 +543,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+LIMITS_HELP = ("защитный профиль пределов: control (по умолчанию, раздел 10 "
+              "кейса) | none (снять пределы); превышение — код выхода 6")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="madrigal", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -516,6 +554,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("info", help="информация о записи и сессиях")
     p.add_argument("file")
     p.add_argument("--show-errors", action="store_true")
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
     p.set_defaults(func=cmd_info)
 
     p = sub.add_parser("stream", help="восстановленный поток сессии")
@@ -524,11 +564,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("dir", choices=("a2b", "b2a"))
     p.add_argument("--offset", type=int, default=0)
     p.add_argument("--length", type=int, default=None)
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
     p.set_defaults(func=cmd_stream)
 
     p = sub.add_parser("packet", help="разбор одного пакета")
     p.add_argument("file")
     p.add_argument("index", type=int)
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
     p.set_defaults(func=cmd_packet)
 
     p = sub.add_parser(
@@ -542,6 +586,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="куда записать машиночитаемый результат JSON")
     p.add_argument("--max-messages", type=int, default=1000,
                    help="сколько сообщений на поток включать в JSON")
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
     p.set_defaults(func=cmd_apply)
 
     p = sub.add_parser(
@@ -552,6 +598,8 @@ def main(argv: list[str] | None = None) -> int:
                         "новой интерпретации)")
     p.add_argument("--out", default=None,
                    help="куда записать машиночитаемый отчёт JSON")
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser(
@@ -630,6 +678,15 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     try:
         return args.func(args)
+    except LimitExceeded as e:
+        print(f"превышение защитных пределов ({e.limits.profile}):",
+              file=sys.stderr)
+        for v in e.violations:
+            print(f"  ! {v}", file=sys.stderr)
+        print(f"профиль: {e.limits.describe()}", file=sys.stderr)
+        print("снять пределы: --limits none (исследовательский запуск)",
+              file=sys.stderr)
+        return 6
     except CaptureError as e:
         print(f"ошибка чтения: {e}", file=sys.stderr)
         return 1

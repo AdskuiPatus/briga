@@ -63,7 +63,8 @@ def test_state_after_open(client):
 def test_open_missing_file(client):
     r = client.post("/api/open", json={"path": "/no/such/file.pcap"})
     assert r.status_code == 400
-    assert "ошибка чтения" in r.json()["detail"]
+    # защитная проверка размера идёт до чтения — сообщение о недоступном файле
+    assert "не удалось открыть файл" in r.json()["detail"]
 
 
 def test_session_detail(client):

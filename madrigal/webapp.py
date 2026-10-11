@@ -23,6 +23,12 @@ from .capture import CaptureError, open_capture
 from .corpus import CorpusError, verify_corpus
 from .interpreter import analyze_session, dir_result_to_dict, hyp_check_to_dict
 from .layers import parse_capture, tcp_flags_str
+from .limits import (
+    LimitExceeded,
+    check_capture,
+    file_size,
+    get_profile,
+)
 from .reassembly import DataRun, Stream, build_stream
 from .schema import Schema, SchemaError, load_schema_file, load_schema_text
 from .sessions import Session, build_sessions
@@ -110,6 +116,7 @@ def _schema_info() -> dict:
 
 class OpenBody(BaseModel):
     path: str
+    limits: str = "control"      # control | none — защитный профиль (раздел 10)
 
 
 class SearchBody(BaseModel):
@@ -149,6 +156,7 @@ class VerifyBody(BaseModel):
     из редактора (живая перепроверка изменённой интерпретации)."""
     path: str
     schema_text: str = ""
+    limits: str = "control"      # control | none — защитный профиль
 
 
 # ---------------------------------------------------------- сериализация ----
@@ -234,21 +242,49 @@ def health() -> dict:
     return {"ok": True, "version": __version__}
 
 
+def _limits_or_400(name: str):
+    try:
+        return get_profile(name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+def _limit_response(limits, violations: List[str]):
+    text = ("превышение защитных пределов "
+            f"({limits.profile}): " + "; ".join(violations)
+            + f". {limits.describe()}. Откройте файл с профилем 'none' "
+            f"для исследовательского запуска сверх контрольной нагрузки.")
+    return HTTPException(413, text)
+
+
 @app.post("/api/open")
 def api_open(body: OpenBody) -> dict:
     path = body.path.strip().strip('"')
     if not path:
         raise HTTPException(400, "путь пуст")
+    limits = _limits_or_400(body.limits)
+    # защитная проверка размера — до чтения файла в память
+    try:
+        violations = check_capture(limits, file_bytes=file_size(path))
+    except OSError as e:
+        raise HTTPException(400, f"не удалось открыть файл: {e}")
+    if violations:
+        raise _limit_response(limits, violations)
     try:
         loaded = Loaded(path)
     except CaptureError as e:
         raise HTTPException(400, f"ошибка чтения: {e}")
     except OSError as e:
         raise HTTPException(400, f"не удалось открыть файл: {e}")
+    violations = check_capture(limits, packets=len(loaded.capture.packets),
+                               sessions=len(loaded.sessions))
+    if violations:
+        raise _limit_response(limits, violations)
     with state.lock:
         state.loaded = loaded
     info = _loaded_info(loaded)
     info["sessions"] = [_session_info(s) for s in loaded.sessions]
+    info["limits"] = limits.profile
     return info
 
 
@@ -505,11 +541,15 @@ def api_verify(body: VerifyBody) -> dict:
         raise HTTPException(400, "путь к манифесту корпуса пуст")
     if len(body.schema_text) > MAX_SCHEMA:
         raise HTTPException(413, "схема больше 1 МиБ")
+    limits = _limits_or_400(body.limits)
     try:
-        return verify_corpus(path, schema_text=body.schema_text or None)
+        return verify_corpus(path, schema_text=body.schema_text or None,
+                             limits=limits)
     except CorpusError as e:
         raise HTTPException(400, "корпус не прошёл проверку: "
                                  + "; ".join(e.errors))
+    except LimitExceeded as e:
+        raise _limit_response(e.limits, e.violations)
 
 
 @app.get("/api/packet/{index}")

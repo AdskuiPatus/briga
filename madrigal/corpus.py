@@ -53,6 +53,7 @@ from . import __version__
 from .capture import CaptureError, open_capture
 from .interpreter import HypCheck, analyze_session, hyp_check_to_dict
 from .layers import parse_capture
+from .limits import LimitExceeded, Limits, check_capture, file_size
 from .reassembly import build_stream
 from .schema import SchemaError, load_schema_file, load_schema_text
 from .sessions import build_sessions
@@ -329,6 +330,7 @@ def run_capture(path: Path, schema: Schema) -> dict:
 
     return {
         "sha256": cap.sha256,
+        "packets_count": len(cap.packets),
         "sessions_count": len(sessions),
         "midstream_sessions": midstream_sessions,
         "directions": dirs,
@@ -447,13 +449,16 @@ def _evaluate(run: dict, expect: dict) -> dict:
 
 def verify_corpus(path: Union[str, Path],
                   schema_override: Optional[Union[str, Path]] = None,
-                  schema_text: Optional[str] = None) -> dict:
+                  schema_text: Optional[str] = None,
+                  limits: Optional["Limits"] = None) -> dict:
     """Проверить корпус: применить схему к каждой записи и сверить ожидания.
 
     schema_override — «живое» переопределение интерпретации (сценарий
     защиты): путь к другой схеме вместо указанной в манифесте.
     schema_text — текст схемы из запроса (UI прогоняет корпус по активной
     схеме редактора, чтобы правка интерпретации сразу перепроверялась).
+    limits — защитные пределы профиля (раздел 10 кейса): превышение на
+    любой записи корпуса — явный отказ, без тихого обрезания данных.
     """
     corpus = load_corpus(path)
 
@@ -496,10 +501,22 @@ def verify_corpus(path: Union[str, Path],
 
     for f in corpus.files:
         abs_path = corpus.base_dir / f.path
+        if limits is not None and limits.file_bytes is not None:
+            violations = check_capture(limits,
+                                       file_bytes=file_size(str(abs_path)))
+            if violations:
+                raise LimitExceeded(limits, [f"{f.path}: {v}"
+                                             for v in violations])
         try:
             run = run_capture(abs_path, schema)
         except (CaptureError, OSError) as e:
             raise CorpusError([f"{f.path}: не удалось прочитать: {e}"])
+        if limits is not None:
+            violations = check_capture(limits, packets=run["packets_count"],
+                                       sessions=run["sessions_count"])
+            if violations:
+                raise LimitExceeded(limits, [f"{f.path}: {v}"
+                                             for v in violations])
         ev = _evaluate(run, f.expect)
         ok = not ev["mismatches"]
         if not ok:
