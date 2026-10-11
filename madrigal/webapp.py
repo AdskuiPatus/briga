@@ -22,6 +22,7 @@ from . import __version__
 from .capture import CaptureError, open_capture
 from .corpus import CorpusError, verify_corpus
 from .interpreter import analyze_session, dir_result_to_dict, hyp_check_to_dict
+from .jobs import Job, JobStore
 from .layers import parse_capture, tcp_flags_str
 from .limits import (
     LimitExceeded,
@@ -80,6 +81,8 @@ class AppState:
         self.schema: Optional[Schema] = None
         self.schema_text: str = ""
         self.schema_errors: List[str] = []
+        # фоновые задачи: ход и отмена длительных операций (раздел 10)
+        self.jobs = JobStore()
 
 
 state = AppState()
@@ -157,6 +160,18 @@ class VerifyBody(BaseModel):
     path: str
     schema_text: str = ""
     limits: str = "control"      # control | none — защитный профиль
+
+
+class JobBody(BaseModel):
+    """Фоновая задача: verify — проверка корпуса; apply — применение
+    схемы (session | all) к открытой записи."""
+    op: str                      # verify | apply
+    path: str = ""               # verify: манифест корпуса
+    schema_text: str = ""        # verify: текст схемы из редактора
+    limits: str = "control"      # verify: защитный профиль
+    scope: str = "all"           # apply: session | all
+    session: int = 0             # apply: номер сессии при scope=session
+    max_messages: int = 500      # apply: сообщений на поток в JSON
 
 
 # ---------------------------------------------------------- сериализация ----
@@ -550,6 +565,115 @@ def api_verify(body: VerifyBody) -> dict:
                                  + "; ".join(e.errors))
     except LimitExceeded as e:
         raise _limit_response(e.limits, e.violations)
+
+
+# --------------------------------------------------- фоновые задачи ----
+
+def _job_verify_fn(path: str, schema_text: str, limits):
+    def run(progress) -> dict:
+        try:
+            return verify_corpus(path, schema_text=schema_text or None,
+                                 limits=limits, progress=progress)
+        except CorpusError as e:
+            # ошибка корпуса — не сбой задачи, а результат проверки
+            return {"corpus_error": "; ".join(e.errors)}
+    return run
+
+
+def _job_apply_fn(loaded: Loaded, schema: Schema, scope: str,
+                  session: int, max_messages: int):
+    if scope == "session":
+        indices = [session]
+    else:
+        indices = list(range(len(loaded.sessions)))
+    directions = schema.scope_directions or ["a2b", "b2a"]
+
+    def run(progress) -> dict:
+        progress.start_stage(f"сессий {len(indices)}", len(indices))
+        sessions_out = []
+        for idx in indices:
+            progress.check_cancel()
+            s = loaded.sessions[idx]
+            streams = {d: loaded.stream(idx, d) for d in directions}
+            results, hyps = analyze_session(schema, streams)
+            sessions_out.append({
+                "index": idx,
+                "endpoints": {"a": s.a_label, "b": s.b_label},
+                "midstream": s.midstream,
+                "directions": {
+                    d: dir_result_to_dict(results[d], max_messages)
+                    for d in directions
+                },
+                "hypotheses": [hyp_check_to_dict(h) for h in hyps],
+            })
+            progress.advance(note=f"сессия {idx}")
+        return {
+            "schema": {"name": schema.name, "sha256": schema.sha256},
+            "file": {"path": loaded.capture.path,
+                     "sha256": loaded.capture.sha256},
+            "scope": scope,
+            "sessions": sessions_out,
+        }
+    return run
+
+
+@app.post("/api/jobs")
+def api_job_start(body: JobBody) -> dict:
+    """Запустить длительную операцию в фоне: клиент поллит /api/jobs/{id},
+    видит ход и может отменить. Результат задачи тот же, что у
+    синхронного /api/verify и /api/schema/apply."""
+    if body.op == "verify":
+        path = body.path.strip().strip('"')
+        if not path:
+            raise HTTPException(400, "путь к манифесту корпуса пуст")
+        if len(body.schema_text) > MAX_SCHEMA:
+            raise HTTPException(413, "схема больше 1 МиБ")
+        limits = _limits_or_400(body.limits)
+        job = state.jobs.submit(
+            "verify", f"проверка корпуса {Path(path).name}",
+            _job_verify_fn(path, body.schema_text, limits))
+    elif body.op == "apply":
+        loaded = _require()
+        schema = _require_schema()
+        if body.scope not in ("session", "all"):
+            raise HTTPException(400, "scope должен быть session или all")
+        if body.scope == "session":
+            loaded.session(body.session)          # валидация → 404
+        max_messages = max(1, min(body.max_messages, 5000))
+        job = state.jobs.submit(
+            "apply",
+            f"применение схемы {schema.name} "
+            f"({'все сессии' if body.scope == 'all' else f'сессия {body.session}'})",
+            _job_apply_fn(loaded, schema, body.scope, body.session,
+                          max_messages))
+    else:
+        raise HTTPException(400, "op должен быть verify или apply")
+    return job.snapshot(include_result=False)
+
+
+@app.get("/api/jobs")
+def api_job_list() -> dict:
+    return {"jobs": [j.snapshot(include_result=False)
+                     for j in state.jobs.list()]}
+
+
+@app.get("/api/jobs/{job_id}")
+def api_job_get(job_id: str) -> dict:
+    job = state.jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"нет задачи {job_id}")
+    return job.snapshot()
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def api_job_cancel(job_id: str) -> dict:
+    """Отменить задачу: флаг ставится немедленно, останов — на ближайшей
+    проверке между единицами работы; статус становится cancelled."""
+    job = state.jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"нет задачи {job_id}")
+    job.cancel()
+    return job.snapshot(include_result=False)
 
 
 @app.get("/api/packet/{index}")

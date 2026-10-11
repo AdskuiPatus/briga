@@ -55,6 +55,77 @@ const post = (url, body) => api(url, {
   body: JSON.stringify(body),
 });
 
+/* ==================== фоновые задачи: ход и отмена (раздел 10) ===== */
+
+const JOB = { id: null, timer: null, finish: null };
+
+function jobShow(title) {
+  if (JOB.timer) { clearInterval(JOB.timer); JOB.timer = null; }
+  $('job-progress').hidden = false;
+  $('job-progress').classList.add('busy');
+  $('job-title').textContent = title;
+  $('job-label').textContent = '';
+  $('job-fill').style.width = '0';
+}
+
+function jobHide() {
+  if (JOB.timer) { clearInterval(JOB.timer); JOB.timer = null; }
+  JOB.id = null;
+  $('job-progress').hidden = true;
+  $('job-progress').classList.remove('busy');
+}
+
+function jobRender(d) {
+  const p = d.progress || {};
+  $('job-title').textContent = `${d.title} [${d.status}]`;
+  $('job-label').textContent = p.total
+    ? `${p.label} · ${p.current}/${p.total}`
+    : (p.label || '');
+  if (p.total) {
+    $('job-progress').classList.remove('busy');
+    $('job-fill').style.width = Math.round(100 * p.current / p.total) + '%';
+  }
+}
+
+/**
+ * Запустить задачу и поллить её ход до завершения.
+ * Разрешается объектом: {done: result} | {cancelled: true} | {failed: error}.
+ * Ошибка запуска (HTTP) бросается, чтобы вызывающий код показал её.
+ */
+async function runJob(body, title) {
+  jobShow(title);
+  const j = await post('/api/jobs', body);
+  JOB.id = j.id;
+  return new Promise((resolve) => {
+    JOB.finish = resolve;
+    JOB.timer = setInterval(pollJob, 250);
+    pollJob();
+  });
+}
+
+async function pollJob() {
+  if (!JOB.id) return;
+  let d;
+  try { d = await api('/api/jobs/' + JOB.id); }
+  catch (e) { jobHide(); showError(e.message); return; }
+  jobRender(d);
+  if (d.status === 'running' || d.status === 'queued') return;
+  // завершено: done | failed | cancelled
+  clearInterval(JOB.timer); JOB.timer = null;
+  const finish = JOB.finish; JOB.finish = null;
+  jobHide();
+  if (d.status === 'cancelled') finish({ cancelled: true });
+  else if (d.status === 'failed') finish({ failed: d.error });
+  else finish({ done: d.result });
+}
+
+async function cancelJob() {
+  if (!JOB.id) return;
+  $('job-label').textContent = 'отменяю…';
+  try { await post(`/api/jobs/${JOB.id}/cancel`, {}); }
+  catch (e) { showError(e.message); }
+}
+
 function showError(msg) {
   const bar = $('error-bar');
   bar.textContent = '⚠ ' + msg;
@@ -644,14 +715,30 @@ async function applySchema(scope) {
       return;
     }
   }
-  const body = scope === 'all'
-    ? { scope: 'all' }
+  const scopeAll = scope === 'all';
+  const body = scopeAll
+    ? { op: 'apply', scope: 'all' }
     : { scope: 'session', session: S.session.id };
   $('interp-summary').innerHTML = '';
   $('interp-hypotheses').innerHTML = '';
   $('interp-messages').innerHTML = '<div class="pad muted">применяю схему…</div>';
   try {
-    const d = await post('/api/schema/apply', body);
+    let d;
+    if (scopeAll) {
+      // ко всей записи — длительная операция: ход и отмена (раздел 10)
+      const out = await runJob(body, 'применение схемы ко всей записи');
+      if (out.cancelled || out.failed) {
+        S.interp = null;
+        $('interp-messages').innerHTML = '';
+        showError(out.cancelled
+          ? 'применение отменено — неполный результат не показан'
+          : `применение прервано: ${out.failed}`);
+        return;
+      }
+      d = out.done;
+    } else {
+      d = await post('/api/schema/apply', body);
+    }
     S.interp = d;
     S.interpStamp = { schemaSha: d.schema.sha256, fileSha: d.file.sha256 };
     renderInterp();
@@ -861,10 +948,38 @@ async function verifyCorpus() {
   try {
     // корпус сверяем с активной схемой редактора: правка интерпретации
     // должна сразу отражаться на перепроверке (сценарий защиты)
-    const d = await post('/api/verify', {
+    const out = await runJob({
+      op: 'verify',
       path,
       schema_text: (S.schema && S.schema.present) ? S.schema.text : '',
-    });
+    }, 'проверка корпуса');
+    if (out.cancelled) {
+      // отмена явная: частичный отчёт не выдаётся за полный
+      S.corpus = null;
+      S.corpusStamp = null;
+      $('corpus-status').textContent =
+        'проверка отменена — отчёт не построен, исходные записи не изменены';
+      updateStaleness();
+      return;
+    }
+    if (out.failed) {
+      S.corpus = null;
+      S.corpusStamp = null;
+      $('corpus-status').textContent = '';
+      showError(`проверка корпуса прервана: ${out.failed}`);
+      updateStaleness();
+      return;
+    }
+    const d = out.done;
+    if (d.corpus_error) {
+      // ошибка корпуса — результат проверки, не сбой UI
+      S.corpus = null;
+      S.corpusStamp = null;
+      $('corpus-status').textContent = '';
+      showError('корпус не прошёл проверку: ' + d.corpus_error);
+      updateStaleness();
+      return;
+    }
     S.corpus = d;
     S.corpusStamp = { schemaSha: d.schema.sha256 };
     $('corpus-status').textContent =
@@ -1077,6 +1192,7 @@ function init() {
   });
 
   $('btn-corpus-verify').addEventListener('click', verifyCorpus);
+  $('btn-job-cancel').addEventListener('click', cancelJob);
   $('corpus-path').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') verifyCorpus();
   });

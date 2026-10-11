@@ -54,6 +54,7 @@ from .capture import CaptureError, open_capture
 from .interpreter import HypCheck, analyze_session, hyp_check_to_dict
 from .layers import parse_capture
 from .limits import LimitExceeded, Limits, check_capture, file_size
+from .progress import Progress
 from .reassembly import build_stream
 from .schema import SchemaError, load_schema_file, load_schema_text
 from .sessions import build_sessions
@@ -450,7 +451,8 @@ def _evaluate(run: dict, expect: dict) -> dict:
 def verify_corpus(path: Union[str, Path],
                   schema_override: Optional[Union[str, Path]] = None,
                   schema_text: Optional[str] = None,
-                  limits: Optional["Limits"] = None) -> dict:
+                  limits: Optional["Limits"] = None,
+                  progress: Optional["Progress"] = None) -> dict:
     """Проверить корпус: применить схему к каждой записи и сверить ожидания.
 
     schema_override — «живое» переопределение интерпретации (сценарий
@@ -459,6 +461,7 @@ def verify_corpus(path: Union[str, Path],
     схеме редактора, чтобы правка интерпретации сразу перепроверялась).
     limits — защитные пределы профиля (раздел 10 кейса): превышение на
     любой записи корпуса — явный отказ, без тихого обрезания данных.
+    progress — ход и кооперативная отмена: этап — один файл корпуса.
     """
     corpus = load_corpus(path)
 
@@ -501,6 +504,9 @@ def verify_corpus(path: Union[str, Path],
 
     for f in corpus.files:
         abs_path = corpus.base_dir / f.path
+        if progress is not None:
+            progress.start_stage(
+                f"файл {len(files_out) + 1}/{len(corpus.files)}: {f.path}")
         if limits is not None and limits.file_bytes is not None:
             violations = check_capture(limits,
                                        file_bytes=file_size(str(abs_path)))

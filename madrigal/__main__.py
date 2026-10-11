@@ -53,6 +53,7 @@ from .limits import (
     get_profile,
 )
 from .project import ProjectError
+from .progress import CancelledError, StderrProgress
 from .reassembly import build_stream
 from .schema import SchemaError, load_schema_file
 from .sessions import build_sessions, sessions_summary
@@ -204,8 +205,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
     hyp_totals: Counter = Counter()
     any_refuted = False
     messages_total = 0
+    progress = StderrProgress(quiet=args.quiet)
+    progress.start_stage(f"сессий {len(indices)}", len(indices))
 
     for idx in indices:
+        progress.check_cancel()
         s = sessions[idx]
         streams = {}
         for d in directions:
@@ -257,6 +261,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
                            for d in directions},
             "hypotheses": [hyp_check_to_dict(h) for h in hyps],
         })
+        progress.advance(note=f"сессия {idx}")
 
     if hyp_totals:
         parts = [f"{k}={v}" for k, v in sorted(hyp_totals.items())]
@@ -278,9 +283,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     """Проверить интерпретацию по корпусу записей (R4)."""
+    progress = StderrProgress(quiet=args.quiet)
     try:
         report = verify_corpus(args.corpus, schema_override=args.schema,
-                               limits=get_profile(args.limits))
+                               limits=get_profile(args.limits),
+                               progress=progress)
     except CorpusError as e:
         print("корпус не прошёл проверку:", file=sys.stderr)
         for err in e.errors:
@@ -588,6 +595,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="сколько сообщений на поток включать в JSON")
     p.add_argument("--limits", default="control",
                    choices=("control", "none"), help=LIMITS_HELP)
+    p.add_argument("--quiet", action="store_true",
+                   help="не печатать ход в stderr (отмена Ctrl+C работает)")
     p.set_defaults(func=cmd_apply)
 
     p = sub.add_parser(
@@ -600,6 +609,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="куда записать машиночитаемый отчёт JSON")
     p.add_argument("--limits", default="control",
                    choices=("control", "none"), help=LIMITS_HELP)
+    p.add_argument("--quiet", action="store_true",
+                   help="не печатать ход в stderr (отмена Ctrl+C работает)")
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser(
@@ -678,6 +689,11 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     try:
         return args.func(args)
+    except (CancelledError, KeyboardInterrupt):
+        # отмена явная: частичные результаты не выдаются за полные
+        print("\nоперация отменена — неполный результат не записан",
+              file=sys.stderr)
+        return 130
     except LimitExceeded as e:
         print(f"превышение защитных пределов ({e.limits.profile}):",
               file=sys.stderr)

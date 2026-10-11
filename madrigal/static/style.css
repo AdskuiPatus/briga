@@ -404,6 +404,29 @@ table.msg-table td:nth-child(5) { white-space: normal; }
   font-size: 12.5px;
 }
 
+/* ход длительной операции + отмена (раздел 10 кейса) */
+.job-progress { display: inline-flex; align-items: center; gap: 8px; }
+.job-bar {
+  display: inline-block; width: 140px; height: 8px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #14161c; overflow: hidden;
+}
+.job-bar > span {
+  display: block; height: 100%; width: 0;
+  background: var(--accent2); transition: width .25s;
+}
+.job-progress.busy .job-bar > span {
+  /* неопределённый ход: полоска живёт, пока идёт работа */
+  animation: jobind 1.1s linear infinite;
+}
+@keyframes jobind {
+  0% { width: 0; margin-left: 0; }
+  50% { width: 60%; margin-left: 20%; }
+  100% { width: 0; margin-left: 100%; }
+}
+#job-label { max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+             white-space: nowrap; }
+
 /* устаревшие результаты видимо отличимы от актуальных */
 .interp-results.stale #interp-summary,
 .interp-results.stale #interp-hypotheses,

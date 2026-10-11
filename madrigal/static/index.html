@@ -115,6 +115,12 @@
           <input id="corpus-path" placeholder="путь к манифесту корпуса .yaml"
                  spellcheck="false">
           <button id="btn-corpus-verify">Проверить корпус</button>
+          <span id="job-progress" class="job-progress" hidden>
+            <span id="job-title" class="muted"></span>
+            <span class="job-bar"><span id="job-fill"></span></span>
+            <span id="job-label" class="muted mono"></span>
+            <button id="btn-job-cancel">Отмена</button>
+          </span>
           <span id="schema-status" class="muted"></span>
         </div>
         <div class="interp-grid">
