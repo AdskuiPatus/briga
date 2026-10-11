@@ -20,7 +20,7 @@
   <g fill="none" stroke="#13264a" stroke-width="13"
      stroke-linecap="round" stroke-linejoin="round">
     <!-- S -->
-    <path d="M60 44 H36 V70 H58 V96 H34 V122 H60"/>
+    <path d="M56 53 C56 41 34 41 34 57 C34 71 52 75 52 87 C52 103 32 103 32 117"/>
     <!-- D -->
     <path d="M82 44 V122 M82 44 H100 C124 44 128 60 128 83 C128 106 124 122 100 122 H82"/>
     <!-- A -->
@@ -31,7 +31,7 @@
   <!-- неоновая цепь поверх букв -->
   <g filter="url(#glow)" fill="none" stroke="url(#neon)" stroke-width="2.6"
      stroke-linecap="round" stroke-linejoin="round">
-    <path d="M44 116 V70 H60"/>        <!-- след по S -->
+    <path d="M50 55 C50 47 39 47 39 58 C39 70 47 74 47 85 C47 99 38 99 38 112"/>  <!-- след по S -->
     <path d="M96 106 V58 H112"/>       <!-- след по D -->
     <path d="M158 112 L172 56 L186 112"/>  <!-- след по A -->
     <path d="M150 88 C150 32 206 32 206 88"/>  <!-- петля над A -->
@@ -39,8 +39,8 @@
 
   <!-- узлы цепи -->
   <g filter="url(#glow)" fill="#13264a" stroke="url(#neon)" stroke-width="2.3">
-    <circle cx="44"  cy="116" r="4.2"/>
-    <circle cx="60"  cy="70"  r="4.2"/>
+    <circle cx="50"  cy="55"  r="4.2"/>
+    <circle cx="38"  cy="112" r="4.2"/>
     <circle cx="96"  cy="106" r="4.2"/>
     <circle cx="112" cy="58"  r="4.2"/>
     <circle cx="172" cy="56"  r="4.2"/>
