@@ -1,0 +1,93 @@
+# Интерпретация вымышленного протокола «демо-стенда» (пример к R3).
+#
+# Формат обмена (выведен из примеров в examples/make_demo.py):
+#   запрос:  AA 55 | cmd(1)   | len(2 LE) | payload
+#   ответ:   AA 55 | status(1)| len(2 LE) | payload
+# Строки «когда что видели» — основания (basis), не доказательства.
+version: 1
+name: demo-protocol
+scope:
+  directions: [a2b, b2a]
+
+framing:
+  magic: "AA 55"            # маркер начала каждого сообщения
+  header: 5                 # AA 55 + поле(1) + len(2)
+  length: {offset: 3, type: u16le, includes: payload}
+  min: 5
+  max: 65536
+
+messages:
+  # ------------------------------------------------ запросы (b2a) --
+  - id: read_params
+    direction: b2a
+    when: [{offset: 2, type: u8, eq: 1}]
+    fields:
+      - {name: cmd, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+
+  - id: set_value
+    direction: b2a
+    when: [{offset: 2, type: u8, eq: 2}]
+    fields:
+      - {name: cmd, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+      - {name: value, offset: 5, type: u16le}
+
+  - id: get_measurement
+    direction: b2a
+    when: [{offset: 2, type: u8, eq: 3}]
+    fields:
+      - {name: cmd, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+      - {name: channel, offset: 5, type: u8}
+
+  # ----------------------------------------------- ответы (a2b) --
+  # Порядок имеет значение: первое подошедшее правило побеждает.
+  # Размеры различают типы ответов; ответы других размеров остаются
+  # неопознанными (id=null) — это честный неохват, а не догадка.
+  - id: params_response
+    direction: a2b
+    when: [{offset: 3, type: u16le, eq: 4}]
+    fields:
+      - {name: status, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+      - {name: params, offset: 5, type: bytes, length: {from_field: plen}}
+
+  - id: set_ack
+    direction: a2b
+    when: [{offset: 3, type: u16le, eq: 2}]
+    fields:
+      - {name: status, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+      - {name: value, offset: 5, type: u16le}
+
+  - id: measurement_response
+    direction: a2b
+    when: [{offset: 3, type: u16le, in: [64, 4000]}]
+    fields:
+      - {name: status, offset: 2, type: u8}
+      - {name: plen, offset: 3, type: u16le}
+      - {name: payload, offset: 5, type: bytes, length: {from_field: plen}}
+
+hypotheses:
+  - id: h-echo
+    statement: >-
+      Ответ set_ack подтверждает установленное значение: поле value ответа
+      равно полю value запроса set_value.
+    basis:
+      - "запись: действие «задать 21» → запрос value=21, ответ value=21"
+      - "запись: действие «задать 37» → запрос value=37, ответ value=37"
+    status: proposed
+    check:
+      pairs:
+        a: {message: set_value, field: value}
+        b: {message: set_ack, field: value}
+      expect: equal
+
+  - id: h-status-zero
+    statement: "status=0 в ответе означает успешное выполнение запроса."
+    basis:
+      - "во всех ответах успешного обмена записи status=0"
+      # семантика кода не доказана самими байтами — нужен журнал действий
+      # или документация; механической проверки не присвоено
+    status: proposed

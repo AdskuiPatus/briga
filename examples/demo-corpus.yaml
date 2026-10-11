@@ -1,0 +1,78 @@
+# Корпус проверки интерпретации (R4) для демо-стенда.
+#
+# Пути записей и схемы — относительно этого манифеста (переносимость, R5).
+# expect документирует ожидания исследователя:
+#   * числа сверяются строго;
+#   * matched сверяет только перечисленные типы сообщений;
+#   * hypotheses сверяет результат механической проверки гипотезы.
+# Прогон: python -m madrigal verify examples/demo-corpus.yaml --out report.json
+# Актуальность отчёта: python -m madrigal stale report.json
+version: 1
+name: demo-corpus
+schema: demo-protocol.yaml
+
+files:
+  - path: demo.pcapng
+    note: >-
+      эталонное соединение: всё распознаётся, гипотеза h-echo
+      подтверждается на двух парах, пропусков нет
+    expect:
+      sessions: 1
+      directions:
+        b2a:
+          messages: 5
+          matched: {read_params: 1, set_value: 2, get_measurement: 2}
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+        a2b:
+          messages: 5
+          matched: {params_response: 1, set_ack: 2, measurement_response: 2}
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+      hypotheses:
+        h-echo: pass
+        h-status-zero: not_checked
+
+  - path: demo_defect.pcapng
+    note: >-
+      дефекты захвата: начало без рукопожатия, потерянный сегмент и
+      различающиеся данные в перекрытии — ожидаем видимый неохват,
+      неоднозначность и неприменимую проверку h-echo
+    expect:
+      sessions: 1
+      directions:
+        b2a:
+          messages: 1
+          matched: {set_value: 1}
+          unmatched: 0
+        a2b:
+          messages: 2
+          matched: {}
+          unmatched: 2
+          partial: 1
+      hypotheses:
+        h-echo: not_applicable
+        h-status-zero: not_checked
+
+  - path: demo_counterexample.pcapng
+    note: >-
+      контрпример: устройство на установку 21 ответило 99 — гипотеза
+      h-echo обязана быть опровергнута данными с привязкой к пакетам
+    expect:
+      sessions: 1
+      directions:
+        b2a:
+          messages: 2
+          matched: {set_value: 2}
+          unmatched: 0
+        a2b:
+          messages: 2
+          matched: {set_ack: 2}
+          unmatched: 0
+      hypotheses:
+        h-echo: fail
+        h-status-zero: not_checked

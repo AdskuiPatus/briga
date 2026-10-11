@@ -1,0 +1,58 @@
+version: 1
+name: madrigal-demo
+description: 'Исследование протокола демо-стенда МАДРИГАЛ: записи PCAPNG, декларативная
+  интерпретация, корпус проверки, отчёты'
+requires:
+  python: '>=3.12'
+  packages:
+  - pyyaml>=6.0
+settings:
+  overlap_policy: first-seen
+  directions:
+  - a2b
+  - b2a
+recordings:
+- path: examples/demo.pcapng
+  sha256: ba574d0da0fcccf67ff438ae8da7c00780df4ec5de035b46006526b09dc8e88b
+  note: эталонное соединение стенда
+- path: examples/demo_defect.pcapng
+  sha256: 71013a6011e6cd7cdfe9ebd158aa0f3380e2ea42078e9ff6f718a0e059cd0a19
+  note: 'дефекты захвата: midstream, пропуск, перекрытие'
+- path: examples/demo_counterexample.pcapng
+  sha256: f286cca1ab61a0470741ae923334297cd25dd7a03eb219ff1b4a88cf6cb04677
+  note: 'контрпример: ответ 99 на установку 21'
+schemas:
+- path: examples/demo-protocol.yaml
+  sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+  note: интерпретация протокола демо-стенда
+corpora:
+- path: examples/demo-corpus.yaml
+  sha256: c13ee3d02588cbf01994bff49f38b0a784b87066198dff2cf7c44ec0ef81d7b9
+  note: 'корпус проверки: 3 записи с ожиданиями'
+results:
+- path: reports/demo-corpus-verify.json
+  kind: corpus-verify
+  note: прогон корпуса по схеме
+observations:
+- text: 'установка значения 21: запрос value=21, ответ set_ack подтверждает value=21
+    (основание гипотезы h-echo)'
+  source:
+    file: examples/demo.pcapng
+    session: 0
+    offset: 9
+    direction: a2b
+    packets:
+    - 8
+    - 9
+- text: ответ 99 на установку 21 — контрпример, опровергающий h-echo на данных
+  source:
+    file: examples/demo_counterexample.pcapng
+    session: 0
+    offset: 9
+    direction: a2b
+- text: 'потерянный сегмент: 40 байт неизвестных между смещениями, не подменяются
+    нулями'
+  source:
+    file: examples/demo_defect.pcapng
+    session: 0
+    direction: a2b

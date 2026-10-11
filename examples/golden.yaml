@@ -1,0 +1,294 @@
+# Golden-примеры (R6): фиксированные входы + ожидаемые результаты.
+# Проверка: python -m madrigal golden
+# Обновление после уточнения интерпретации: python -m madrigal golden --update
+version: 1
+name: demo-golden
+cases:
+- name: apply-demo-protocol
+  kind: apply
+  file: demo.pcapng
+  schema: demo-protocol.yaml
+  expect:
+    kind: apply
+    file_sha256: ba574d0da0fcccf67ff438ae8da7c00780df4ec5de035b46006526b09dc8e88b
+    schema_sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 5
+          matched:
+            params_response: 1
+            set_ack: 2
+            measurement_response: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 4097
+          message_list:
+          - id: params_response
+            direction: a2b
+            start: 0
+            size: 9
+          - id: set_ack
+            direction: a2b
+            start: 9
+            size: 7
+          - id: set_ack
+            direction: a2b
+            start: 16
+            size: 7
+          - id: measurement_response
+            direction: a2b
+            start: 23
+            size: 69
+          - id: measurement_response
+            direction: a2b
+            start: 92
+            size: 4005
+        b2a:
+          messages: 5
+          matched:
+            read_params: 1
+            set_value: 2
+            get_measurement: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 31
+          message_list:
+          - id: read_params
+            direction: b2a
+            start: 0
+            size: 5
+          - id: set_value
+            direction: b2a
+            start: 5
+            size: 7
+          - id: set_value
+            direction: b2a
+            start: 12
+            size: 7
+          - id: get_measurement
+            direction: b2a
+            start: 19
+            size: 6
+          - id: get_measurement
+            direction: b2a
+            start: 25
+            size: 6
+      hypotheses:
+        h-echo: pass
+        h-status-zero: not_checked
+- name: apply-demo-protocol-session0
+  kind: apply
+  file: demo.pcapng
+  schema: demo-protocol.yaml
+  session: 0
+  expect:
+    kind: apply
+    file_sha256: ba574d0da0fcccf67ff438ae8da7c00780df4ec5de035b46006526b09dc8e88b
+    schema_sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 5
+          matched:
+            params_response: 1
+            set_ack: 2
+            measurement_response: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 4097
+          message_list:
+          - id: params_response
+            direction: a2b
+            start: 0
+            size: 9
+          - id: set_ack
+            direction: a2b
+            start: 9
+            size: 7
+          - id: set_ack
+            direction: a2b
+            start: 16
+            size: 7
+          - id: measurement_response
+            direction: a2b
+            start: 23
+            size: 69
+          - id: measurement_response
+            direction: a2b
+            start: 92
+            size: 4005
+        b2a:
+          messages: 5
+          matched:
+            read_params: 1
+            set_value: 2
+            get_measurement: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 31
+          message_list:
+          - id: read_params
+            direction: b2a
+            start: 0
+            size: 5
+          - id: set_value
+            direction: b2a
+            start: 5
+            size: 7
+          - id: set_value
+            direction: b2a
+            start: 12
+            size: 7
+          - id: get_measurement
+            direction: b2a
+            start: 19
+            size: 6
+          - id: get_measurement
+            direction: b2a
+            start: 25
+            size: 6
+      hypotheses:
+        h-echo: pass
+        h-status-zero: not_checked
+- name: apply-demo-protocol-defects
+  kind: apply
+  file: demo_defect.pcapng
+  schema: demo-protocol.yaml
+  expect:
+    kind: apply
+    file_sha256: 71013a6011e6cd7cdfe9ebd158aa0f3380e2ea42078e9ff6f718a0e059cd0a19
+    schema_sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 2
+          matched: {}
+          unmatched: 2
+          partial: 1
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 142
+          message_list:
+          - id: null
+            direction: a2b
+            start: 0
+            size: 37
+          - id: null
+            direction: a2b
+            start: 37
+            size: 105
+        b2a:
+          messages: 1
+          matched:
+            set_value: 1
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 7
+          message_list:
+          - id: set_value
+            direction: b2a
+            start: 0
+            size: 7
+      hypotheses:
+        h-echo: not_applicable
+        h-status-zero: not_checked
+- name: apply-demo-protocol-counterexample
+  kind: apply
+  file: demo_counterexample.pcapng
+  schema: demo-protocol.yaml
+  expect:
+    kind: apply
+    file_sha256: f286cca1ab61a0470741ae923334297cd25dd7a03eb219ff1b4a88cf6cb04677
+    schema_sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 2
+          matched:
+            set_ack: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 14
+          message_list:
+          - id: set_ack
+            direction: a2b
+            start: 0
+            size: 7
+          - id: set_ack
+            direction: a2b
+            start: 7
+            size: 7
+        b2a:
+          messages: 2
+          matched:
+            set_value: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 14
+          message_list:
+          - id: set_value
+            direction: b2a
+            start: 0
+            size: 7
+          - id: set_value
+            direction: b2a
+            start: 7
+            size: 7
+      hypotheses:
+        h-echo: fail
+        h-status-zero: not_checked
+- name: verify-demo-corpus
+  kind: verify
+  corpus: demo-corpus.yaml
+  expect:
+    kind: verify
+    corpus_sha256: c13ee3d02588cbf01994bff49f38b0a784b87066198dff2cf7c44ec0ef81d7b9
+    schema_sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
+    totals:
+      files: 3
+      ok: 3
+      mismatched: 0
+    summary_counts:
+      violations: 1
+      coverage: 1
+      ambiguities: 1
+      not_applicable: 4
+      unknown: 3
+    files:
+    - path: demo.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h-echo: pass
+        h-status-zero: not_checked
+    - path: demo_defect.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h-echo: not_applicable
+        h-status-zero: not_checked
+    - path: demo_counterexample.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h-echo: fail
+        h-status-zero: not_checked

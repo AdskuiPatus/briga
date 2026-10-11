@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MADRIGAL · лаборатория протоколов</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">MADRIGAL<span>лаборатория протоколов</span></div>
+  <div class="open-form">
+    <input id="path-input" placeholder="путь к файлу .pcap / .pcapng" spellcheck="false">
+    <button id="btn-browse">Обзор…</button>
+    <button id="btn-open" class="primary">Открыть</button>
+  </div>
+  <div id="file-info" class="file-info"></div>
+</header>
+
+<div id="error-bar" hidden></div>
+
+<main>
+  <aside>
+    <h2>Сессии <span id="sessions-count" class="muted"></span></h2>
+    <table class="sessions">
+      <thead>
+        <tr><th>#</th><th>A</th><th>B</th><th title="пакетов">пак.</th><th title="байт полезной нагрузки">Б</th></tr>
+      </thead>
+      <tbody id="sessions-body">
+        <tr><td colspan="5" class="muted">нет данных</td></tr>
+      </tbody>
+    </table>
+    <div id="file-notes" class="notes"></div>
+  </aside>
+
+  <section id="work">
+    <div id="empty-state" class="empty">
+      <p>Откройте запись <b>PCAP / PCAPNG</b>, чтобы начать исследование.</p>
+      <p class="muted">Пример: <code>examples/demo.pcapng</code></p>
+    </div>
+
+    <div id="session-view" hidden>
+      <div id="session-meta" class="session-meta"></div>
+
+      <nav class="tabs">
+        <button class="tab" id="tab-a2b" data-dir="a2b"></button>
+        <button class="tab" id="tab-b2a" data-dir="b2a"></button>
+        <button class="tab" id="tab-compare">Сравнение</button>
+        <button class="tab" id="tab-interpret">Интерпретация</button>
+      </nav>
+
+      <div id="stream-pane">
+        <div class="toolbar">
+          <div class="group">
+            <button id="prev-page" title="предыдущая страница">◀</button>
+            <input id="jump-offset" type="number" min="0" placeholder="смещение">
+            <button id="btn-jump">К смещению</button>
+            <button id="next-page" title="следующая страница">▶</button>
+            <span id="page-info" class="muted"></span>
+          </div>
+          <div class="group">
+            <select id="search-mode">
+              <option value="ascii">ASCII</option>
+              <option value="hex">HEX</option>
+            </select>
+            <input id="search-input" placeholder="шаблон поиска" spellcheck="false">
+            <button id="btn-search">Найти</button>
+            <button id="match-prev" title="предыдущее совпадение" disabled>▲</button>
+            <span id="search-info" class="muted"></span>
+            <button id="match-next" title="следующее совпадение" disabled>▼</button>
+          </div>
+        </div>
+
+        <div id="hexview" class="hexview"><div class="muted pad">поток не загружен</div></div>
+
+        <div id="stats" class="stats"></div>
+        <div id="diagnostics" class="diagnostics"></div>
+      </div>
+
+      <div id="compare-pane" hidden>
+        <div class="compare-form">
+          <fieldset>
+            <legend>Пример A</legend>
+            <label>сессия <select id="cmp-a-sid"></select></label>
+            <label>направление <select id="cmp-a-dir">
+              <option value="a2b">A → B</option><option value="b2a">B → A</option>
+            </select></label>
+            <label>смещение <input id="cmp-a-off" type="number" min="0" value="0"></label>
+            <label>длина <input id="cmp-a-len" type="number" min="8" max="4096" value="256"></label>
+          </fieldset>
+          <fieldset>
+            <legend>Пример B</legend>
+            <label>сессия <select id="cmp-b-sid"></select></label>
+            <label>направление <select id="cmp-b-dir">
+              <option value="a2b">A → B</option><option value="b2a">B → A</option>
+            </select></label>
+            <label>смещение <input id="cmp-b-off" type="number" min="0" value="0"></label>
+            <label>длина <input id="cmp-b-len" type="number" min="8" max="4096" value="256"></label>
+          </fieldset>
+          <button id="btn-compare" class="primary">Сравнить</button>
+        </div>
+        <div id="compare-result"></div>
+      </div>
+
+      <div id="interpret-pane" hidden>
+        <div class="interp-toolbar">
+          <input id="schema-path" placeholder="путь к схеме .yaml / .json"
+                 spellcheck="false">
+          <button id="btn-schema-load">Загрузить файл</button>
+          <button id="btn-schema-check" class="primary">Проверить схему</button>
+          <button id="btn-schema-apply">Применить к сессии</button>
+          <button id="btn-schema-apply-all">Ко всей записи</button>
+          <span class="toolbar-sep"></span>
+          <input id="corpus-path" placeholder="путь к манифесту корпуса .yaml"
+                 spellcheck="false">
+          <button id="btn-corpus-verify">Проверить корпус</button>
+          <span id="schema-status" class="muted"></span>
+        </div>
+        <div class="interp-grid">
+          <div class="interp-editor">
+            <div class="muted">схема интерпретации (YAML/JSON):
+              правила фрейминга и сообщений + гипотезы с основаниями</div>
+            <textarea id="schema-text" spellcheck="false"
+              placeholder="version: 1&#10;name: my-protocol&#10;framing: …"></textarea>
+            <div id="schema-errors" class="schema-errors"></div>
+          </div>
+          <div class="interp-results" id="interp-results">
+            <div id="interp-stale" class="stale-banner" hidden></div>
+            <div id="interp-summary"></div>
+            <div id="interp-hypotheses"></div>
+            <div id="interp-messages"></div>
+          </div>
+        </div>
+        <div class="corpus-section">
+          <h4>проверка по корпусу (R4): ожидания исследователя против данных</h4>
+          <div id="corpus-status" class="muted"></div>
+          <div id="corpus-stale" class="stale-banner" hidden></div>
+          <div id="corpus-result"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="selection-bar" class="selbar">
+  <div class="sel-main">
+    <span class="muted">выделение:</span>
+    <span id="sel-pos">—</span>
+    <span id="sel-hex" class="mono"></span>
+    <span id="sel-ascii" class="mono"></span>
+    <span id="sel-packets"></span>
+  </div>
+  <div class="muted">клик по байту — выбор, Shift+клик — диапазон</div>
+</footer>
+
+<!-- модальное окно пакета -->
+<div id="modal-packet" class="modal" hidden>
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <b id="pkt-title">Пакет</b>
+      <button class="close" data-close="modal-packet">✕</button>
+    </div>
+    <div id="pkt-body" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- модальное окно выбора файла -->
+<div id="modal-browse" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <b>Выбор записи</b>
+      <button class="close" data-close="modal-browse">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="browse-path">
+        <button id="browse-up">↑ вверх</button>
+        <span id="browse-current" class="mono"></span>
+      </div>
+      <div id="browse-list" class="browse-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

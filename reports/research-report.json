@@ -1,0 +1,286 @@
+{
+  "tool": {
+    "name": "madrigal-lab",
+    "version": "0.1.0"
+  },
+  "generated_at": "2026-10-11T17:24:41+00:00",
+  "project": {
+    "name": "madrigal-demo",
+    "description": "Исследование протокола демо-стенда МАДРИГАЛ: записи PCAPNG, декларативная интерпретация, корпус проверки, отчёты",
+    "manifest_sha256": "755791bd47657507f240a63e0d6340b85aab08ebaf33a79701f833116df23d4b",
+    "requires": {
+      "python": ">=3.12",
+      "packages": [
+        "pyyaml>=6.0"
+      ]
+    },
+    "settings": {
+      "overlap_policy": "first-seen",
+      "directions": [
+        "a2b",
+        "b2a"
+      ]
+    }
+  },
+  "recordings": [
+    {
+      "path": "examples/demo.pcapng",
+      "sha256": "ba574d0da0fcccf67ff438ae8da7c00780df4ec5de035b46006526b09dc8e88b",
+      "note": "эталонное соединение стенда",
+      "exists": true
+    },
+    {
+      "path": "examples/demo_defect.pcapng",
+      "sha256": "71013a6011e6cd7cdfe9ebd158aa0f3380e2ea42078e9ff6f718a0e059cd0a19",
+      "note": "дефекты захвата: midstream, пропуск, перекрытие",
+      "exists": true
+    },
+    {
+      "path": "examples/demo_counterexample.pcapng",
+      "sha256": "f286cca1ab61a0470741ae923334297cd25dd7a03eb219ff1b4a88cf6cb04677",
+      "note": "контрпример: ответ 99 на установку 21",
+      "exists": true
+    }
+  ],
+  "schemas": [
+    {
+      "path": "examples/demo-protocol.yaml",
+      "sha256": "23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025",
+      "note": "интерпретация протокола демо-стенда",
+      "name": "demo-protocol",
+      "scope": [
+        "a2b",
+        "b2a"
+      ],
+      "messages": [
+        {
+          "id": "read_params",
+          "direction": "b2a",
+          "fields": [
+            "cmd",
+            "plen"
+          ]
+        },
+        {
+          "id": "set_value",
+          "direction": "b2a",
+          "fields": [
+            "cmd",
+            "plen",
+            "value"
+          ]
+        },
+        {
+          "id": "get_measurement",
+          "direction": "b2a",
+          "fields": [
+            "cmd",
+            "plen",
+            "channel"
+          ]
+        },
+        {
+          "id": "params_response",
+          "direction": "a2b",
+          "fields": [
+            "status",
+            "plen",
+            "params"
+          ]
+        },
+        {
+          "id": "set_ack",
+          "direction": "a2b",
+          "fields": [
+            "status",
+            "plen",
+            "value"
+          ]
+        },
+        {
+          "id": "measurement_response",
+          "direction": "a2b",
+          "fields": [
+            "status",
+            "plen",
+            "payload"
+          ]
+        }
+      ],
+      "hypotheses": [
+        {
+          "id": "h-echo",
+          "statement": "Ответ set_ack подтверждает установленное значение: поле value ответа равно полю value запроса set_value.",
+          "basis": [
+            "запись: действие «задать 21» → запрос value=21, ответ value=21",
+            "запись: действие «задать 37» → запрос value=37, ответ value=37"
+          ],
+          "status": "proposed",
+          "mechanically_checked": true
+        },
+        {
+          "id": "h-status-zero",
+          "statement": "status=0 в ответе означает успешное выполнение запроса.",
+          "basis": [
+            "во всех ответах успешного обмена записи status=0"
+          ],
+          "status": "proposed",
+          "mechanically_checked": false
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "path": "reports/demo-corpus-verify.json",
+      "kind": "corpus-verify",
+      "note": "прогон корпуса по схеме",
+      "exists": true,
+      "corpus": "demo-corpus",
+      "schema": "demo-protocol",
+      "generated_at": "2026-10-11T17:24:41+00:00",
+      "totals": {
+        "files": 3,
+        "ok": 3,
+        "mismatched": 0
+      },
+      "summary_counts": {
+        "violations": 1,
+        "coverage": 1,
+        "ambiguities": 1,
+        "not_applicable": 4,
+        "unknown": 3
+      },
+      "summary": {
+        "violations": [
+          "demo_counterexample.pcapng: гипотеза h-echo опровергнута данными: контрпримеров 1 из 2 пар; первый: set_value#0=21 против set_ack#0=99"
+        ],
+        "coverage": [
+          "demo_defect.pcapng: a2b: неопознанных сообщений 2 — правилами схемы не описаны"
+        ],
+        "ambiguities": [
+          "demo_defect.pcapng: a2b: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)"
+        ],
+        "not_applicable": [
+          "demo.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "demo_defect.pcapng: h-echo: not_applicable — нет примеров сообщений: set_value (1), set_ack (0)",
+          "demo_defect.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "demo_counterexample.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "demo_defect.pcapng: a2b: неизвестных байтов 40 в 1 пропусках",
+          "demo_defect.pcapng: a2b: частичных сообщений 1 — байты не подменяются",
+          "demo_defect.pcapng: сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+        ]
+      },
+      "violations": [
+        {
+          "hypothesis": "h-echo",
+          "statement": "Ответ set_ack подтверждает установленное значение: поле value ответа равно полю value запроса set_value.",
+          "counterexamples_total": 1,
+          "counterexamples": [
+            {
+              "file": "demo_counterexample.pcapng",
+              "session": 0,
+              "a": {
+                "message": "set_value",
+                "index": 0,
+                "offset": 0,
+                "size": 7,
+                "value": 21,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  3
+                ]
+              },
+              "b": {
+                "message": "set_ack",
+                "index": 0,
+                "offset": 0,
+                "size": 7,
+                "value": 99,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  4
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "current": true,
+      "stale_reasons": []
+    }
+  ],
+  "observations": [
+    {
+      "text": "установка значения 21: запрос value=21, ответ set_ack подтверждает value=21 (основание гипотезы h-echo)",
+      "source": {
+        "file": "examples/demo.pcapng",
+        "session": 0,
+        "offset": 9,
+        "direction": "a2b",
+        "packets": [
+          8,
+          9
+        ]
+      }
+    },
+    {
+      "text": "ответ 99 на установку 21 — контрпример, опровергающий h-echo на данных",
+      "source": {
+        "file": "examples/demo_counterexample.pcapng",
+        "session": 0,
+        "offset": 9,
+        "direction": "a2b"
+      }
+    },
+    {
+      "text": "потерянный сегмент: 40 байт неизвестных между смещениями, не подменяются нулями",
+      "source": {
+        "file": "examples/demo_defect.pcapng",
+        "session": 0,
+        "direction": "a2b"
+      }
+    }
+  ],
+  "limitations": [
+    "интерпретация частичная: описаны изученные записи корпуса; неизвестные участки (неопознанные сообщения, пропуски, частичные сообщения) видимы явно и не подменяются",
+    "совпадения на примерах корпуса не доказывают назначение поля и универсальность модели (раздел 7.1 кейса)",
+    "перекрытия с различающимися байтами: применяется политика first-seen, альтернатива сохраняется в ambiguities с пакетами",
+    "midstream-соединения: роли (клиент/устройство) не назначаются, направления заданы относительно канонических endpoint'ов",
+    "поддерживаются PCAP/PCAPNG с Ethernet(+VLAN), IPv4, TCP; другие уровни явно диагностируются как неподдерживаемые"
+  ],
+  "open_questions": [
+    "гипотеза h-status-zero (статус proposed): status=0 в ответе означает успешное выполнение запроса. — механическая проверка не присвоена, предположение остаётся неподтверждённым",
+    "[неохват] demo_defect.pcapng: a2b: неопознанных сообщений 2 — правилами схемы не описаны",
+    "[неоднозначности] demo_defect.pcapng: a2b: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)",
+    "[неизвестные] demo_defect.pcapng: a2b: неизвестных байтов 40 в 1 пропусках",
+    "[неизвестные] demo_defect.pcapng: a2b: частичных сообщений 1 — байты не подменяются",
+    "[неизвестные] demo_defect.pcapng: сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+  ],
+  "reapply": [
+    {
+      "goal": "Применить сохранённую интерпретацию к новой записи:",
+      "command": "python -m madrigal apply НОВАЯ_ЗАПИСЬ.pcapng --schema СОХРАНЁННАЯ_СХЕМА.yaml --out result.json"
+    },
+    {
+      "goal": "Проверить интерпретацию по новому корпусу записей с ожиданиями:",
+      "command": "python -m madrigal verify НОВЫЙ_КОРПУС.yaml --schema СОХРАНЁННАЯ_СХЕМА.yaml --out report.json"
+    },
+    {
+      "goal": "Проверить актуальность ранее сохранённого отчёта:",
+      "command": "python -m madrigal stale report.json"
+    },
+    {
+      "goal": "Убедиться, что инструмент и схема ведут себя как при сдаче (golden-примеры: входы + ожидаемые результаты):",
+      "command": "python -m madrigal golden"
+    },
+    {
+      "goal": "Воспроизвести отчёт по проекту (какие записи, какие проверки):",
+      "command": "python -m madrigal report ."
+    }
+  ]
+}

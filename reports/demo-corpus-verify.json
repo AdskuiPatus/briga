@@ -1,0 +1,442 @@
+{
+  "tool": {
+    "name": "madrigal-lab",
+    "version": "0.1.0"
+  },
+  "generated_at": "2026-10-11T17:24:41+00:00",
+  "corpus": {
+    "name": "demo-corpus",
+    "path": "examples\\demo-corpus.yaml",
+    "base": "C:\\Users\\Patis\\Documents\\прес качат\\madrigal-lab\\examples",
+    "sha256": "c13ee3d02588cbf01994bff49f38b0a784b87066198dff2cf7c44ec0ef81d7b9"
+  },
+  "schema": {
+    "name": "demo-protocol",
+    "path": "C:\\Users\\Patis\\Documents\\прес качат\\madrigal-lab\\examples\\demo-protocol.yaml",
+    "source": "file",
+    "overridden": false,
+    "sha256": "23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025",
+    "messages": [
+      "read_params",
+      "set_value",
+      "get_measurement",
+      "params_response",
+      "set_ack",
+      "measurement_response"
+    ],
+    "hypotheses": [
+      "h-echo",
+      "h-status-zero"
+    ]
+  },
+  "files": [
+    {
+      "path": "demo.pcapng",
+      "note": "эталонное соединение: всё распознаётся, гипотеза h-echo подтверждается на двух парах, пропусков нет",
+      "sha256": "ba574d0da0fcccf67ff438ae8da7c00780df4ec5de035b46006526b09dc8e88b",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 5,
+          "matched": {
+            "params_response": 1,
+            "set_ack": 2,
+            "measurement_response": 2
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 4097,
+          "described_bytes": 4087,
+          "total_bytes": 4097
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 5,
+          "matched": {
+            "read_params": 1,
+            "set_value": 2,
+            "get_measurement": 2
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 31,
+          "described_bytes": 21,
+          "total_bytes": 31
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 1
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h-echo",
+          "statement": "Ответ set_ack подтверждает установленное значение: поле value ответа равно полю value запроса set_value.",
+          "basis": [
+            "запись: действие «задать 21» → запрос value=21, ответ value=21",
+            "запись: действие «задать 37» → запрос value=37, ответ value=37"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 2 парах",
+          "pairs": {
+            "total": 2,
+            "ok": 2,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h-status-zero",
+          "statement": "status=0 в ответе означает успешное выполнение запроса.",
+          "basis": [
+            "во всех ответах успешного обмена записи status=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "demo_defect.pcapng",
+      "note": "дефекты захвата: начало без рукопожатия, потерянный сегмент и различающиеся данные в перекрытии — ожидаем видимый неохват, неоднозначность и неприменимую проверку h-echo",
+      "sha256": "71013a6011e6cd7cdfe9ebd158aa0f3380e2ea42078e9ff6f718a0e059cd0a19",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [
+          "a2b: неопознанных сообщений 2 — правилами схемы не описаны"
+        ],
+        "ambiguities": [
+          "a2b: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)"
+        ],
+        "not_applicable": [
+          "h-echo: not_applicable — нет примеров сообщений: set_value (1), set_ack (0)",
+          "h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "a2b: неизвестных байтов 40 в 1 пропусках",
+          "a2b: частичных сообщений 1 — байты не подменяются",
+          "сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+        ]
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 2,
+          "matched": {},
+          "unmatched": 2,
+          "partial": 1,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 102,
+          "described_bytes": 0,
+          "total_bytes": 142
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 1,
+          "matched": {
+            "set_value": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 7,
+          "described_bytes": 5,
+          "total_bytes": 7
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 1,
+          "gap_bytes": 40,
+          "ambiguities": 1,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 1,
+      "hypotheses": [
+        {
+          "id": "h-echo",
+          "statement": "Ответ set_ack подтверждает установленное значение: поле value ответа равно полю value запроса set_value.",
+          "basis": [
+            "запись: действие «задать 21» → запрос value=21, ответ value=21",
+            "запись: действие «задать 37» → запрос value=37, ответ value=37"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_applicable",
+          "note": "нет примеров сообщений: set_value (1), set_ack (0)",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h-status-zero",
+          "statement": "status=0 в ответе означает успешное выполнение запроса.",
+          "basis": [
+            "во всех ответах успешного обмена записи status=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "demo_counterexample.pcapng",
+      "note": "контрпример: устройство на установку 21 ответило 99 — гипотеза h-echo обязана быть опровергнута данными с привязкой к пакетам",
+      "sha256": "f286cca1ab61a0470741ae923334297cd25dd7a03eb219ff1b4a88cf6cb04677",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [
+        "гипотеза h-echo опровергнута данными: контрпримеров 1 из 2 пар; первый: set_value#0=21 против set_ack#0=99"
+      ],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 2,
+          "matched": {
+            "set_ack": 2
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 14,
+          "described_bytes": 10,
+          "total_bytes": 14
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 2,
+          "matched": {
+            "set_value": 2
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 14,
+          "described_bytes": 10,
+          "total_bytes": 14
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h-echo",
+          "statement": "Ответ set_ack подтверждает установленное значение: поле value ответа равно полю value запроса set_value.",
+          "basis": [
+            "запись: действие «задать 21» → запрос value=21, ответ value=21",
+            "запись: действие «задать 37» → запрос value=37, ответ value=37"
+          ],
+          "status_before": "proposed",
+          "status_after": "refuted",
+          "result": "fail",
+          "note": "опровергнуто на данных: контрпримеров 1 из 2 пар",
+          "pairs": {
+            "total": 2,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [
+            {
+              "a": {
+                "message": "set_value",
+                "index": 0,
+                "offset": 0,
+                "size": 7,
+                "value": 21,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  3
+                ]
+              },
+              "b": {
+                "message": "set_ack",
+                "index": 0,
+                "offset": 0,
+                "size": 7,
+                "value": 99,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  4
+                ]
+              },
+              "session": 0
+            }
+          ],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 1
+        },
+        {
+          "id": "h-status-zero",
+          "statement": "status=0 в ответе означает успешное выполнение запроса.",
+          "basis": [
+            "во всех ответах успешного обмена записи status=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "files": 3,
+    "ok": 3,
+    "mismatched": 0
+  },
+  "summary": {
+    "violations": [
+      "demo_counterexample.pcapng: гипотеза h-echo опровергнута данными: контрпримеров 1 из 2 пар; первый: set_value#0=21 против set_ack#0=99"
+    ],
+    "coverage": [
+      "demo_defect.pcapng: a2b: неопознанных сообщений 2 — правилами схемы не описаны"
+    ],
+    "ambiguities": [
+      "demo_defect.pcapng: a2b: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)"
+    ],
+    "not_applicable": [
+      "demo.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "demo_defect.pcapng: h-echo: not_applicable — нет примеров сообщений: set_value (1), set_ack (0)",
+      "demo_defect.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "demo_counterexample.pcapng: h-status-zero: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+    ],
+    "unknown": [
+      "demo_defect.pcapng: a2b: неизвестных байтов 40 в 1 пропусках",
+      "demo_defect.pcapng: a2b: частичных сообщений 1 — байты не подменяются",
+      "demo_defect.pcapng: сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+    ]
+  },
+  "summary_counts": {
+    "violations": 1,
+    "coverage": 1,
+    "ambiguities": 1,
+    "not_applicable": 4,
+    "unknown": 3
+  }
+}
