@@ -1,0 +1,9 @@
+{
+  "path": "reports\\load-control.pcapng",
+  "bytes": 46222828,
+  "packets": 105000,
+  "sessions": 1000,
+  "messages": 100000,
+  "seed": 1,
+  "stopped_because": "план исчерпан"
+}

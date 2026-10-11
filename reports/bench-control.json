@@ -1,0 +1,80 @@
+{
+  "tool": {
+    "name": "madrigal-lab",
+    "version": "0.1.0"
+  },
+  "generated_at": "2026-10-11T19:20:25+00:00",
+  "platform": "win32",
+  "python": "3.12.10",
+  "file": {
+    "path": "reports\\load-control.pcapng",
+    "sha256": "bba1383d0c89bc9a62e87de534acd4c6028de5240a4bc8ea518de4a23e24730c",
+    "bytes": 46222828,
+    "packets": 105000,
+    "sessions": 1000
+  },
+  "schema": {
+    "path": "examples\\demo-protocol.yaml",
+    "sha256": "23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025"
+  },
+  "corpus": null,
+  "stages": [
+    {
+      "name": "open",
+      "title": "чтение записи, sha256, заголовки",
+      "seconds": 0.271,
+      "items": 105000,
+      "items_per_sec": 386865,
+      "rss_before_mb": 25.9,
+      "rss_after_mb": 94.0,
+      "rss_delta_mb": 68.1,
+      "peak_rss_mb": 96.0
+    },
+    {
+      "name": "parse",
+      "title": "разбор Ethernet/IPv4/TCP",
+      "seconds": 0.761,
+      "items": 105000,
+      "items_per_sec": 137893,
+      "rss_before_mb": 94.1,
+      "rss_after_mb": 240.9,
+      "rss_delta_mb": 146.9,
+      "peak_rss_mb": 240.9
+    },
+    {
+      "name": "sessions",
+      "title": "группировка в TCP-соединения",
+      "seconds": 0.1,
+      "items": 1000,
+      "items_per_sec": 10038,
+      "rss_before_mb": 243.7,
+      "rss_after_mb": 254.0,
+      "rss_delta_mb": 10.4,
+      "peak_rss_mb": 254.0
+    },
+    {
+      "name": "reassembly",
+      "title": "восстановление потоков (обе стороны)",
+      "seconds": 0.11,
+      "items": 2000,
+      "items_per_sec": 18238,
+      "rss_before_mb": 254.0,
+      "rss_after_mb": 254.1,
+      "rss_delta_mb": 0.0,
+      "peak_rss_mb": 254.1
+    },
+    {
+      "name": "apply",
+      "title": "применение схемы demo-protocol",
+      "seconds": 26.923,
+      "items": 1000,
+      "items_per_sec": 37,
+      "rss_before_mb": 254.3,
+      "rss_after_mb": 258.4,
+      "rss_delta_mb": 4.1,
+      "peak_rss_mb": 264.5
+    }
+  ],
+  "total_seconds": 28.165,
+  "peak_rss_mb": 264.5
+}

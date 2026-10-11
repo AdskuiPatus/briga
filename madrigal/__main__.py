@@ -27,6 +27,14 @@
   python -m madrigal golden [MANIFEST] [--update] [--json OUT.json]
       прогнать golden-примеры: входы + ожидаемые результаты повторного
       применения (R6); код выхода 4 — расхождение с ожиданиями
+  python -m madrigal loadgen --out FILE [--sessions N] [--messages N]
+                             [--seed N] [--max-bytes N]
+      сгенерировать детерминированную нагрузочную запись контрольного
+      профиля (раздел 10): до 1000 соединений, 100 000 сообщений,
+      ответы до 64 КиБ; предел max_bytes останавливает явно
+  python -m madrigal bench FILE [--schema S] [--corpus C] [--out B.json]
+      замер времени и памяти основных операций на контрольной нагрузке;
+      выход 0 всегда (сам замер — не проверка)
 """
 
 from __future__ import annotations
@@ -40,6 +48,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import __version__
+from .bench import bench_file, render_bench
 from .capture import CaptureError, open_capture
 from .corpus import CorpusError, check_report, verify_corpus
 from .interpreter import analyze_session, dir_result_to_dict, hyp_check_to_dict
@@ -47,11 +56,13 @@ from .layers import parse_capture, parse_packet, tcp_flags_str
 from .limits import (
     LimitExceeded,
     Limits,
+    MIB,
     check_capture,
     check_messages,
     file_size,
     get_profile,
 )
+from .loadgen import generate_load
 from .project import ProjectError
 from .progress import CancelledError, StderrProgress
 from .reassembly import build_stream
@@ -372,6 +383,53 @@ def cmd_stale(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_loadgen(args: argparse.Namespace) -> int:
+    """Сгенерировать нагрузочную запись (контрольный профиль раздела 10)."""
+    progress = StderrProgress(quiet=args.quiet)
+
+    def on_progress(packets: int, written: int) -> None:
+        progress.note(f"пакетов {packets}, {written >> 20} МиБ")
+
+    progress.start_stage("генерация записи")
+    summary = generate_load(args.out, sessions=args.sessions,
+                            messages=args.messages,
+                            answer_max=args.answer_max, seed=args.seed,
+                            max_bytes=args.max_bytes,
+                            progress=on_progress)
+    print(f"запись:   {summary['path']}")
+    print(f"размер:   {summary['bytes']:,} Б "
+          f"({summary['bytes'] / MIB:.1f} МиБ)".replace(",", " "))
+    print(f"пакетов:  {summary['packets']:,}".replace(",", " "))
+    print(f"сессий:   {summary['sessions']:,}".replace(",", " "))
+    print(f"сообщений:{summary['messages']:,}".replace(",", " "))
+    print(f"seed:     {summary['seed']}")
+    print(f"остановлено: {summary['stopped_because']}")
+    if args.out_json:
+        Path(args.out_json).write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+        print(f"сводка: {args.out_json}")
+    return 0
+
+
+def cmd_bench(args: argparse.Namespace) -> int:
+    """Замерить время и память основных операций на контрольной нагрузке."""
+    progress = StderrProgress(quiet=args.quiet)
+
+    def on_stage(name: str, seconds: float, items: int) -> None:
+        progress.note(f"{name}: {seconds:.3f} с, элементов {items}")
+
+    report = bench_file(args.file, schema_path=args.schema,
+                        corpus_path=args.corpus, progress=on_stage)
+    print(render_bench(report))
+    if args.out:
+        Path(args.out).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+        print(f"машиночитаемый замер: {args.out}")
+    return 0
+
+
 def cmd_project(args: argparse.Namespace) -> int:
     """Переносимый исследовательский проект (R5)."""
     from . import project as proj
@@ -617,6 +675,35 @@ def main(argv: list[str] | None = None) -> int:
         "stale", help="проверить актуальность отчёта корпуса по sha256")
     p.add_argument("report", help="отчёт JSON, созданный командой verify")
     p.set_defaults(func=cmd_stale)
+
+    p = sub.add_parser(
+        "loadgen", help="сгенерировать нагрузочную запись (раздел 10)")
+    p.add_argument("--out", required=True, help="куда записать PCAPNG")
+    p.add_argument("--sessions", type=int, default=1000)
+    p.add_argument("--messages", type=int, default=100_000,
+                   help="всего прикладных сообщений")
+    p.add_argument("--answer-max", type=int, default=64 * 1024,
+                   help="максимум байт в ответе (профиль: 64 КиБ)")
+    p.add_argument("--seed", type=int, default=1,
+                   help="детерминизм: одинаковый seed → одинаковые байты")
+    p.add_argument("--max-bytes", type=int, default=100 * MIB,
+                   help="защитный предел размера записи; остановка явная")
+    p.add_argument("--out-json", default=None,
+                   help="куда записать сводку генерации в JSON")
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_loadgen)
+
+    p = sub.add_parser(
+        "bench", help="замер времени и памяти основных операций (раздел 10)")
+    p.add_argument("file", help="запись для замера (обычная или нагрузочная)")
+    p.add_argument("--schema", default=None,
+                   help="добавить стадию применения схемы")
+    p.add_argument("--corpus", default=None,
+                   help="добавить стадию проверки корпуса")
+    p.add_argument("--out", default=None,
+                   help="куда записать машиночитаемый замер JSON")
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_bench)
 
     p = sub.add_parser(
         "project", help="переносимый исследовательский проект (R5)")
