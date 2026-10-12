@@ -118,19 +118,27 @@ def _parse_ethernet(data: bytes) -> tuple[Optional[Ethernet], Optional[str], int
     return Ethernet(dst=dst, src=src, ethertype=ethertype, vlan_ids=vlans), None, off
 
 
-def _parse_ipv4(data: bytes, off: int) -> tuple[Optional[IPv4], Optional[str], List[str], int]:
+def _parse_ipv4(
+    data: bytes, off: int
+) -> tuple[Optional[IPv4], Optional[str], List[str], int, int]:
+    """Возвращает (ip, error, warnings, tcp_off, ip_end).
+
+    ip_end — конец IP-пакета по полю total_len (ограничен размером кадра):
+    именно им ограничивается полезная нагрузка TCP, чтобы не захватить
+   Ethernet-выравнивание коротких кадров (минимум 60 Б) как «данные».
+    """
     warnings: List[str] = []
     if len(data) < off + 20:
-        return None, "IPv4-заголовок обрезан", warnings, off
+        return None, "IPv4-заголовок обрезан", warnings, off, off
     vihl = data[off]
     version, ihl_bits = vihl >> 4, vihl & 0x0F
     if version != 4:
-        return None, f"не IPv4 (version={version})", warnings, off
+        return None, f"не IPv4 (version={version})", warnings, off, off
     ihl = ihl_bits * 4
     if ihl < 20:
-        return None, f"некорректная длина IPv4-заголовка ({ihl})", warnings, off
+        return None, f"некорректная длина IPv4-заголовка ({ihl})", warnings, off, off
     if len(data) < off + ihl:
-        return None, "IPv4-заголовок обрезан", warnings, off
+        return None, "IPv4-заголовок обрезан", warnings, off, off
 
     total_len, ident, frag, ttl, proto, _csum = struct.unpack(
         "!HHHBBH", data[off + 2:off + 12]
@@ -159,11 +167,18 @@ def _parse_ipv4(data: bytes, off: int) -> tuple[Optional[IPv4], Optional[str], L
         end = len(data)
     if frag_offset:
         # не первый фрагмент — TCP-заголовок недоступен
-        return ip, None, warnings, end
-    return ip, None, warnings, off + ihl
+        return ip, None, warnings, end, end
+    return ip, None, warnings, off + ihl, end
 
 
-def _parse_tcp(data: bytes, off: int) -> tuple[Optional[TCP], Optional[str], bytes]:
+def _parse_tcp(
+    data: bytes, off: int, end: int
+) -> tuple[Optional[TCP], Optional[str], bytes]:
+    """Разобрать TCP-заголовок; полезная нагрузка ограничена end (концом IP-пакета).
+
+    Без ограничения end к коротким кадрам (равным 60-байтовому минимуму Ethernet)
+    подмешивалось бы выравнивающее заполнение как будто это данные.
+    """
     if len(data) < off + 20:
         return None, "TCP-заголовок обрезан", b""
     sport, dport, seq, ack = struct.unpack("!HHII", data[off:off + 12])
@@ -179,7 +194,9 @@ def _parse_tcp(data: bytes, off: int) -> tuple[Optional[TCP], Optional[str], byt
         src_port=sport, dst_port=dport, seq=seq, ack=ack,
         flags=flags, window=window, header_len=doff,
     )
-    return tcp, None, data[off + doff:]
+    payload_start = off + doff
+    payload_end = max(payload_start, min(end, len(data)))
+    return tcp, None, data[payload_start:payload_end]
 
 
 def parse_packet(data: bytes, linktype: int, index: int = -1) -> Parsed:
@@ -200,7 +217,7 @@ def parse_packet(data: bytes, linktype: int, index: int = -1) -> Parsed:
         parsed.error = f"не IPv4 (ethertype 0x{eth.ethertype:04X})"
         return parsed
 
-    ip, err, ip_warnings, tcp_off = _parse_ipv4(data, off)
+    ip, err, ip_warnings, tcp_off, ip_end = _parse_ipv4(data, off)
     parsed.warnings.extend(ip_warnings)
     if err:
         parsed.error = err
@@ -215,7 +232,7 @@ def parse_packet(data: bytes, linktype: int, index: int = -1) -> Parsed:
         parsed.error = "не первый IP-фрагмент — TCP-заголовок недоступен"
         return parsed
 
-    tcp, err, payload = _parse_tcp(data, tcp_off)
+    tcp, err, payload = _parse_tcp(data, tcp_off, ip_end)
     if err:
         parsed.error = err
         return parsed
