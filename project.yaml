@@ -1,7 +1,9 @@
 version: 1
-name: madrigal-demo
-description: 'Исследование протокола демо-стенда МАДРИГАЛ: записи PCAPNG, декларативная
-  интерпретация, корпус проверки, отчёты'
+name: madrigal-lab
+description: 'Лаборатория протоколов МАДРИГАЛ: локальный инструмент исследования недокументированного
+  TCP-протокола по PCAP/PCAPNG — декларативные интерпретации, корпус проверки, корреляция
+  с журналом действий, отчёты и замеры. Демо-стенд (examples/) и реальный стенд «Термостенд»
+  (case/).'
 requires:
   python: '>=3.12'
   packages:
@@ -21,18 +23,66 @@ recordings:
 - path: examples/demo_counterexample.pcapng
   sha256: f286cca1ab61a0470741ae923334297cd25dd7a03eb219ff1b4a88cf6cb04677
   note: 'контрпример: ответ 99 на установку 21'
+- path: case/recordings/research/01_configuration.pcap
+  sha256: 6e9019561d4ae13c0622dc2ba11e87edc27addfe4679b23f65a3d9a57e387f7a
+  note: 'исследование: базовый обмен конфигурацией (2 сессии)'
+- path: case/recordings/research/02_variations.pcapng
+  sha256: ce1b47e6e471b9e65369197b252ee787ae87107adaf1de02980f6f7db70bd4c5
+  note: 'исследование: вариации параметров, есть служебный probe 0x7E'
+- path: case/recordings/research/03_combined_messages.pcap
+  sha256: 3590b1111504efa74e5fc841c85ecbd93221653e2d09a0b206c91942b7940407
+  note: 'исследование: несколько сообщений в одном TCP-сегменте'
+- path: case/recordings/additional/04_new_observations.pcapng
+  sha256: a7ad6db37afc64d5516607efa16e33448ec93f460ec1a0c19db5b067593eccf0
+  note: дополнительные наблюдения чтения значений и установки порога
+- path: case/recordings/diagnostics/01_retransmission.pcap
+  sha256: f4db652ada2a19dbbd45fc19a4b7b40d4fd04dc533653bd3988926a7f15e8085
+  note: 'диагностика: ретрансмиссия, дедуп по seq'
+- path: case/recordings/diagnostics/02_reordered.pcapng
+  sha256: d039dd254f96c8942d0560bf81f14398b6327279112587a87ec44b88d2a156e8
+  note: 'диагностика: переупорядочение сегментов, порядок по seq'
+- path: case/recordings/diagnostics/03_missing_segment.pcap
+  sha256: 264e1503f162fe2979154829016a122a3a01b55fee56cdef045539c5420bd160
+  note: 'диагностика: пропуск сегмента, partial/unknown фиксируются'
+- path: case/recordings/diagnostics/04_snaplen_truncated.pcapng
+  sha256: de6b57e1e3d1c086aa84bbff62ceb462d4efbcdc13f1cf61c1ac97e765f952b9
+  note: 'диагностика: усечённый захват (snaplen)'
+- path: case/recordings/diagnostics/05_conflicting_overlap.pcap
+  sha256: abee9bbd87963c263eace6fb948f655590096296eaf1cf2264f04a0a93440ac9
+  note: 'диагностика: конфликтующее перекрытие, оставлен первый увиденный'
+- path: case/recordings/diagnostics/06_missing_beginning.pcapng
+  sha256: 850aab35d90d265e12cc29a41062da11a6c594d7b0f85240921316c2f7012806
+  note: 'диагностика: сессия без начала (midstream)'
+- path: case/recordings/diagnostics/07_checksum_offload.pcap
+  sha256: b2c665d464ef2d539b740cb42c53051743d16b95efc309c4942c61daaa849692
+  note: 'диагностика: контрольные суммы offload'
+- path: case/recordings/diagnostics/08_bad_checksum.pcapng
+  sha256: 53c2ad8535e1bd3853129c10ec4d6277da2152199c10039d5e2ca3aa9316a1b9
+  note: 'диагностика: некорректная контрольная сумма'
 schemas:
 - path: examples/demo-protocol.yaml
   sha256: 23ed9ecf3f06c7521d21f16d9b40c2dc171df27889cdae0e5d19cc9df0ada025
   note: интерпретация протокола демо-стенда
+- path: schemas/thermostand-protocol.yaml
+  sha256: 79eeadca18993d8a18171ba3189f9869a07fa71bb21b166fe6af56057d0c0bdf
+  note: декларативная интерпретация протокола стенда «Термостенд» (кадр A6 5C, типы
+    10/20/30, статусы, знаковые поля, повторы, журнал действий)
 corpora:
 - path: examples/demo-corpus.yaml
   sha256: c13ee3d02588cbf01994bff49f38b0a784b87066198dff2cf7c44ec0ef81d7b9
   note: 'корпус проверки: 3 записи с ожиданиями'
+- path: case/corpus.yaml
+  sha256: 6d8bb6bba2c830faab53adeb97a6746ad422743eabdb2b1ef8d23d3f9ea0d31b
+  note: 'корпус проверки стенда: 12 записей (норма + дефекты захвата) с ожиданиями
+    по счётчикам и гипотезам'
 results:
 - path: reports/demo-corpus-verify.json
   kind: corpus-verify
   note: прогон корпуса по схеме
+- path: reports/thermostand-corpus-verify.json
+  kind: corpus-verify
+  note: 'прогон корпуса стенда по схеме: 12/12 ожиданий выполнены, дефекты захвата
+    честно отражены (fail/not_applicable)'
 observations:
 - text: 'установка значения 21: запрос value=21, ответ set_ack подтверждает value=21
     (основание гипотезы h-echo)'
@@ -54,5 +104,28 @@ observations:
     нулями'
   source:
     file: examples/demo_defect.pcapng
+    session: 0
+    direction: a2b
+- text: 'журнал действий ↔ обмен: 6 типов действий (чтение/запись конфигурации, чтение
+    значений) сверены с записями research/01–03 и additional/04 — 0 противоречий (mismatch);
+    статусы и эхо подтверждаются исходными байтами'
+  source:
+    file: case/recordings/research/01_configuration.pcap
+    session: 0
+- text: неопознанный служебный probe (тип 0x7E) в research/02 — оставлен как честный
+    неохват, не подменён известным типом
+  source:
+    file: case/recordings/research/02_variations.pcapng
+    session: 0
+- text: 'пропуск сегмента (diagnostics/03): гипотезы h_seq_read_config и h_read_values_count
+    опровергнуты данными, контрпримеры привязаны к пакетам; число сообщений не завышается'
+  source:
+    file: case/recordings/diagnostics/03_missing_segment.pcap
+    session: 0
+    direction: b2a
+- text: 'midstream (diagnostics/06): сессия без начала не объявлена полноценной, 3
+    байта вне рамок зафиксированы'
+  source:
+    file: case/recordings/diagnostics/06_missing_beginning.pcapng
     session: 0
     direction: a2b

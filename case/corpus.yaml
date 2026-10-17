@@ -1,0 +1,265 @@
+# Корпус проверки интерпретации (R4) для стенда «Термостенд».
+#
+# Пути записей и схемы — относительно этого манифеста (переносимость, R5).
+# Ожидания сгенерированы механически (tools/gen_case_corpus.py) и
+# документируют, что правильная интерпретация даёт на этих записях.
+# Прогон: python -m madrigal verify case/corpus.yaml --out report.json
+version: 1
+name: thermostand-case
+schema: ../schemas/thermostand-protocol.yaml
+
+files:
+# --- исследование протокола (норма обмена) ---
+  - path: "recordings/research/01_configuration.pcap"
+    note: >-
+      базовый обмен конфигурацией: всё распознаётся, статусы ok
+    expect:
+      sessions: 2
+      directions:
+        a2b:
+          messages: 14
+          matched: {req_read_config: 5, req_read_values: 5, req_set_config: 4}
+        b2a:
+          messages: 14
+          matched: {resp_read_config: 5, resp_read_values: 5, resp_set_config: 4}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: incomplete
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/research/02_variations.pcapng"
+    note: >-
+      вариации параметров: есть неопознанный служебный probe (0x7E) — честный неохват
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 15
+          matched: {req_read_config: 4, req_read_values: 4, req_set_config: 6}
+          unmatched: 1
+        b2a:
+          messages: 15
+          matched: {resp_read_config: 4, resp_read_values: 4, resp_set_config: 6}
+          unmatched: 1
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: incomplete
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/research/03_combined_messages.pcap"
+    note: >-
+      несколько сообщений в одном TCP-сегменте (combined), счётчики точны
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+# --- дополнительные наблюдения ---
+  - path: "recordings/additional/04_new_observations.pcapng"
+    note: >-
+      дополнительные сессии чтения значений и установки порога
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 2, req_read_values: 3, req_set_config: 3}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 2, resp_read_values: 3, resp_set_config: 3}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+# --- диагностика дефектов захвата ---
+  - path: "recordings/diagnostics/01_retransmission.pcap"
+    note: >-
+      ретрансмиссия: дедуп по seq, число сообщений не завышается
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/02_reordered.pcapng"
+    note: >-
+      переупорядочение сегментов: порядок по seq, не по приходу
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/03_missing_segment.pcap"
+    note: >-
+      пропуск сегмента: не подменяется, partial/unknown фиксируются
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 6
+          matched: {resp_read_config: 2, resp_read_values: 3, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: fail
+        h_seq_read_config: fail
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/04_snaplen_truncated.pcapng"
+    note: >-
+      усечённый захват (snaplen): частичные сообщения отмечены
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          framing_errors: 1
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: not_applicable
+        h_seq_read_config: not_applicable
+        h_seq_set_config: not_applicable
+        h_set_config_echo: not_applicable
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/05_conflicting_overlap.pcap"
+    note: >-
+      конфликтующее перекрытие: оставлен первый увиденный вариант
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/06_missing_beginning.pcapng"
+    note: >-
+      сессия без начала (midstream): не объявляется полноценной
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 7
+          matched: {req_read_config: 2, req_read_values: 4, req_set_config: 1}
+          unframed_bytes: 3
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: fail
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/07_checksum_offload.pcap"
+    note: >-
+      контрольные суммы offload: не влияет на разбор полезной нагрузки
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked
+
+  - path: "recordings/diagnostics/08_bad_checksum.pcapng"
+    expect:
+      sessions: 1
+      directions:
+        a2b:
+          messages: 8
+          matched: {req_read_config: 3, req_read_values: 4, req_set_config: 1}
+        b2a:
+          messages: 8
+          matched: {resp_read_config: 3, resp_read_values: 4, resp_set_config: 1}
+      hypotheses:
+        h_alarm_threshold: not_checked
+        h_read_values_count: pass
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_status_semantics: not_checked
+        h_temp_encoding: not_checked

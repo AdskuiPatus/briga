@@ -12,7 +12,7 @@
     name: demo-golden
     cases:
       - name: apply-demo
-        kind: apply               # apply | verify
+        kind: apply               # apply | verify | journal
         file: demo.pcapng         # для apply
         schema: demo-protocol.yaml
         # session: 0              # опционально — одна сессия
@@ -21,11 +21,18 @@
         kind: verify
         corpus: demo-corpus.yaml
         expect: {…}
+      - name: journal-thermostand
+        kind: journal             # корреляция журнала действий с обменом (R2)
+        file: ../case/recordings/research/01_configuration.pcap
+        schema: ../schemas/thermostand-protocol.yaml
+        journal: ../case/action_journal.csv
+        expect: {…}
 
 Нормализация сознательно отбрасывает нестабильные детали (время, версию
 инструмента) и хранит проверяемые факты: счётчики сообщений по
 направлениям, список сообщений (id/смещение/размер), результаты
-механической проверки гипотез, sha256 входов. `--update` переписывает
+механической проверки гипотез, sha256 входов. Для journal — итоговые
+вердикты корреляции и исход сверки каждого поля. `--update` переписывает
 ожидания текущими фактами (после уточнения интерпретации — явное
 документирование изменения).
 """
@@ -42,6 +49,8 @@ import yaml
 
 from .capture import open_capture
 from .interpreter import analyze_session
+from .journal import (JournalError, collect_messages, correlate,
+                      filter_capture, load_journal, session_spans, summarize)
 from .layers import parse_capture
 from .reassembly import build_stream
 from .schema import SchemaError, load_schema_file
@@ -62,11 +71,12 @@ class GoldenError(Exception):
 @dataclass
 class GoldenCase:
     name: str
-    kind: str                       # apply | verify
-    file: str = ""                  # apply: запись
-    schema: str = ""                # apply: схема
+    kind: str                       # apply | verify | journal
+    file: str = ""                  # apply/journal: запись
+    schema: str = ""                # apply/journal: схема
     session: Optional[int] = None   # apply: одна сессия
     corpus: str = ""                # verify: манифест корпуса
+    journal: str = ""               # journal: CSV журнала действий
     expect: dict = field(default_factory=dict)
 
 
@@ -135,8 +145,8 @@ def load_golden(path: Union[str, Path]) -> GoldenSet:
             continue
         seen.add(cname)
         kind = raw.get("kind")
-        if kind not in ("apply", "verify"):
-            errors.append(f"{where}.kind: ожидается apply или verify")
+        if kind not in ("apply", "verify", "journal"):
+            errors.append(f"{where}.kind: ожидается apply, verify или journal")
             continue
         case = GoldenCase(name=cname, kind=kind)
         if kind == "apply":
@@ -150,6 +160,16 @@ def load_golden(path: Union[str, Path]) -> GoldenSet:
             else:
                 case.session = sess
             for label, rel in (("file", case.file), ("schema", case.schema)):
+                if rel and not (base / rel).is_file():
+                    errors.append(f"{where}.{label}: файл не найден: {rel}")
+        elif kind == "journal":
+            case.file = _relpath(raw.get("file"), f"{where}.file", errors) or ""
+            case.schema = _relpath(raw.get("schema"), f"{where}.schema",
+                                   errors) or ""
+            case.journal = _relpath(raw.get("journal"), f"{where}.journal",
+                                    errors) or ""
+            for label, rel in (("file", case.file), ("schema", case.schema),
+                               ("journal", case.journal)):
                 if rel and not (base / rel).is_file():
                     errors.append(f"{where}.{label}: файл не найден: {rel}")
         else:
@@ -244,10 +264,59 @@ def run_verify(base: Path, case: GoldenCase) -> dict:
     }
 
 
+def run_journal(base: Path, case: GoldenCase) -> dict:
+    try:
+        schema = load_schema_file(base / case.schema)
+    except SchemaError as e:
+        raise GoldenError([f"{case.name}: схема {case.schema}: "
+                           + "; ".join(e.errors)])
+    if schema.journal is None:
+        raise GoldenError([f"{case.name}: в схеме {case.schema} нет секции "
+                           f"journal — корреляция действий невозможна"])
+    try:
+        actions, _warn = load_journal(base / case.journal)
+    except JournalError as e:
+        raise GoldenError([f"{case.name}: журнал {case.journal}: "
+                           + "; ".join(e.errors)])
+    cap = open_capture(str(base / case.file))
+    parsed = parse_capture(cap)
+    ts = [p.timestamp for p in cap.packets]
+    sessions = build_sessions(ts, parsed)
+    acts = filter_capture(actions, Path(cap.path).name)
+    if not acts:
+        raise GoldenError([f"{case.name}: в журнале нет действий для записи "
+                           f"{Path(cap.path).name}"])
+    directions = schema.scope_directions or ["a2b", "b2a"]
+    msgs_by_session: Dict[int, list] = {}
+    for si, s in enumerate(sessions):
+        streams = {d: build_stream(ts, parsed, s, d) for d in directions}
+        results, _hyps = analyze_session(schema, streams)
+        msgs_by_session[si] = collect_messages(si, streams, results, ts)
+    spans = session_spans(sessions, ts)
+    matches = correlate(acts, msgs_by_session, spans, schema.journal)
+    totals = summarize(matches)
+    journal_sha = hashlib.sha256(
+        (base / case.journal).read_bytes()).hexdigest()
+    return {
+        "kind": "journal",
+        "file_sha256": cap.sha256,
+        "schema_sha256": schema.sha256,
+        "journal_sha256": journal_sha,
+        "actions_count": len(acts),
+        "totals": totals,
+        # по действию: вердикт корреляции и исход сверки каждого поля
+        "actions": [{"action_id": m.action.action_id, "verdict": m.verdict,
+                     "checks": {c.path: c.equal for c in m.checks}}
+                    for m in matches],
+    }
+
+
 def run_case(golden: GoldenSet, case: GoldenCase) -> dict:
     base = golden.path.resolve().parent
     if case.kind == "apply":
         return run_apply(base, case)
+    if case.kind == "journal":
+        return run_journal(base, case)
     return run_verify(base, case)
 
 

@@ -292,3 +292,581 @@ cases:
       hypotheses:
         h-echo: fail
         h-status-zero: not_checked
+- name: apply-thermostand-research01
+  kind: apply
+  file: ../case/recordings/research/01_configuration.pcap
+  schema: ../schemas/thermostand-protocol.yaml
+  expect:
+    kind: apply
+    file_sha256: 6e9019561d4ae13c0622dc2ba11e87edc27addfe4679b23f65a3d9a57e387f7a
+    schema_sha256: f350a663280319db0a102587d74da2914ba72f63baf72c44dfc3591de991e97c
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 9
+          matched:
+            req_read_config: 3
+            req_set_config: 3
+            req_read_values: 3
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 102
+          message_list:
+          - id: req_read_config
+            direction: a2b
+            start: 0
+            size: 8
+          - id: req_set_config
+            direction: a2b
+            start: 8
+            size: 17
+          - id: req_read_values
+            direction: a2b
+            start: 25
+            size: 9
+          - id: req_set_config
+            direction: a2b
+            start: 34
+            size: 17
+          - id: req_read_values
+            direction: a2b
+            start: 51
+            size: 9
+          - id: req_read_config
+            direction: a2b
+            start: 60
+            size: 8
+          - id: req_set_config
+            direction: a2b
+            start: 68
+            size: 17
+          - id: req_read_values
+            direction: a2b
+            start: 85
+            size: 9
+          - id: req_read_config
+            direction: a2b
+            start: 94
+            size: 8
+        b2a:
+          messages: 9
+          matched:
+            resp_read_config: 3
+            resp_set_config: 3
+            resp_read_values: 3
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 165
+          message_list:
+          - id: resp_read_config
+            direction: b2a
+            start: 0
+            size: 18
+          - id: resp_set_config
+            direction: b2a
+            start: 18
+            size: 18
+          - id: resp_read_values
+            direction: b2a
+            start: 36
+            size: 17
+          - id: resp_set_config
+            direction: b2a
+            start: 53
+            size: 18
+          - id: resp_read_values
+            direction: b2a
+            start: 71
+            size: 31
+          - id: resp_read_config
+            direction: b2a
+            start: 102
+            size: 18
+          - id: resp_set_config
+            direction: b2a
+            start: 120
+            size: 18
+          - id: resp_read_values
+            direction: b2a
+            start: 138
+            size: 9
+          - id: resp_read_config
+            direction: b2a
+            start: 147
+            size: 18
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: incomplete
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - index: 1
+      directions:
+        a2b:
+          messages: 5
+          matched:
+            req_read_config: 2
+            req_set_config: 1
+            req_read_values: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 54
+          message_list:
+          - id: req_read_config
+            direction: a2b
+            start: 0
+            size: 8
+          - id: req_set_config
+            direction: a2b
+            start: 8
+            size: 20
+          - id: req_read_values
+            direction: a2b
+            start: 28
+            size: 9
+          - id: req_read_config
+            direction: a2b
+            start: 37
+            size: 8
+          - id: req_read_values
+            direction: a2b
+            start: 45
+            size: 9
+        b2a:
+          messages: 5
+          matched:
+            resp_read_config: 2
+            resp_set_config: 1
+            resp_read_values: 2
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 122
+          message_list:
+          - id: resp_read_config
+            direction: b2a
+            start: 0
+            size: 18
+          - id: resp_set_config
+            direction: b2a
+            start: 18
+            size: 21
+          - id: resp_read_values
+            direction: b2a
+            start: 39
+            size: 24
+          - id: resp_read_config
+            direction: b2a
+            start: 63
+            size: 21
+          - id: resp_read_values
+            direction: b2a
+            start: 84
+            size: 38
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+- name: apply-thermostand-missing-segment
+  kind: apply
+  file: ../case/recordings/diagnostics/03_missing_segment.pcap
+  schema: ../schemas/thermostand-protocol.yaml
+  expect:
+    kind: apply
+    file_sha256: 264e1503f162fe2979154829016a122a3a01b55fee56cdef045539c5420bd160
+    schema_sha256: f350a663280319db0a102587d74da2914ba72f63baf72c44dfc3591de991e97c
+    sessions:
+    - index: 0
+      directions:
+        a2b:
+          messages: 8
+          matched:
+            req_read_config: 3
+            req_read_values: 4
+            req_set_config: 1
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 79
+          message_list:
+          - id: req_read_config
+            direction: a2b
+            start: 0
+            size: 8
+          - id: req_read_values
+            direction: a2b
+            start: 8
+            size: 9
+          - id: req_set_config
+            direction: a2b
+            start: 17
+            size: 19
+          - id: req_read_config
+            direction: a2b
+            start: 36
+            size: 8
+          - id: req_read_values
+            direction: a2b
+            start: 44
+            size: 9
+          - id: req_read_values
+            direction: a2b
+            start: 53
+            size: 9
+          - id: req_read_config
+            direction: a2b
+            start: 62
+            size: 8
+          - id: req_read_values
+            direction: a2b
+            start: 70
+            size: 9
+        b2a:
+          messages: 6
+          matched:
+            resp_set_config: 1
+            resp_read_config: 2
+            resp_read_values: 3
+          unmatched: 0
+          partial: 0
+          framing_errors: 0
+          unframed_bytes: 0
+          total_bytes: 244
+          message_list:
+          - id: resp_set_config
+            direction: b2a
+            start: 0
+            size: 20
+          - id: resp_read_config
+            direction: b2a
+            start: 20
+            size: 20
+          - id: resp_read_values
+            direction: b2a
+            start: 40
+            size: 24
+          - id: resp_read_values
+            direction: b2a
+            start: 64
+            size: 38
+          - id: resp_read_config
+            direction: b2a
+            start: 102
+            size: 20
+          - id: resp_read_values
+            direction: b2a
+            start: 122
+            size: 122
+      hypotheses:
+        h_seq_read_config: fail
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: fail
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+- name: verify-thermostand-case
+  kind: verify
+  corpus: ../case/corpus.yaml
+  expect:
+    kind: verify
+    corpus_sha256: 6d8bb6bba2c830faab53adeb97a6746ad422743eabdb2b1ef8d23d3f9ea0d31b
+    schema_sha256: f350a663280319db0a102587d74da2914ba72f63baf72c44dfc3591de991e97c
+    totals:
+      files: 12
+      ok: 12
+      mismatched: 0
+    summary_counts:
+      violations: 3
+      coverage: 4
+      ambiguities: 1
+      not_applicable: 40
+      unknown: 4
+    files:
+    - path: recordings/research/01_configuration.pcap
+      ok: true
+      sessions: 2
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: incomplete
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/research/02_variations.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: incomplete
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/research/03_combined_messages.pcap
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/additional/04_new_observations.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/01_retransmission.pcap
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/02_reordered.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/03_missing_segment.pcap
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: fail
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: fail
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/04_snaplen_truncated.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: not_applicable
+        h_seq_set_config: not_applicable
+        h_set_config_echo: not_applicable
+        h_read_values_count: not_applicable
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/05_conflicting_overlap.pcap
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/06_missing_beginning.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: fail
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/07_checksum_offload.pcap
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+    - path: recordings/diagnostics/08_bad_checksum.pcapng
+      ok: true
+      sessions: 1
+      hypotheses:
+        h_seq_read_config: pass
+        h_seq_set_config: pass
+        h_set_config_echo: pass
+        h_read_values_count: pass
+        h_status_semantics: not_checked
+        h_alarm_threshold: not_checked
+        h_temp_encoding: not_checked
+- name: journal-thermostand-research01
+  kind: journal
+  file: ../case/recordings/research/01_configuration.pcap
+  schema: ../schemas/thermostand-protocol.yaml
+  journal: ../case/action_journal.csv
+  expect:
+    kind: journal
+    file_sha256: 6e9019561d4ae13c0622dc2ba11e87edc27addfe4679b23f65a3d9a57e387f7a
+    schema_sha256: f350a663280319db0a102587d74da2914ba72f63baf72c44dfc3591de991e97c
+    journal_sha256: 0312fe0c675aee8eaa7b279c0c6d0b48981bfdebc6a4e3551db54b03ef4db897
+    actions_count: 14
+    totals:
+      matched: 14
+      mismatch: 0
+      uncovered: 0
+      incomplete: 0
+      missing: 0
+    actions:
+    - action_id: 01-01-001
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-01-002
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-01-003
+      verdict: matched
+      checks:
+        status: true
+        measurements[0].device_time_ms: true
+        measurements[0].temperature_c: true
+        measurements[0].alarm: true
+    - action_id: 01-01-004
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-01-005
+      verdict: matched
+      checks:
+        status: true
+        measurements[0].device_time_ms: true
+        measurements[1].device_time_ms: true
+        measurements[2].device_time_ms: true
+        measurements[0].temperature_c: true
+        measurements[1].temperature_c: true
+        measurements[2].temperature_c: true
+        measurements[0].alarm: true
+        measurements[1].alarm: true
+        measurements[2].alarm: true
+    - action_id: 01-01-006
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-01-007
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-01-008
+      verdict: matched
+      checks:
+        status: true
+    - action_id: 01-01-009
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-02-001
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-02-002
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-02-003
+      verdict: matched
+      checks:
+        status: true
+        measurements[0].device_time_ms: true
+        measurements[1].device_time_ms: true
+        measurements[0].temperature_c: true
+        measurements[1].temperature_c: true
+        measurements[0].alarm: true
+        measurements[1].alarm: true
+    - action_id: 01-02-004
+      verdict: matched
+      checks:
+        status: true
+        configuration.enabled: true
+        configuration.period_ms: true
+        configuration.threshold_c: true
+        configuration.label: true
+    - action_id: 01-02-005
+      verdict: matched
+      checks:
+        status: true
+        measurements[0].device_time_ms: true
+        measurements[1].device_time_ms: true
+        measurements[2].device_time_ms: true
+        measurements[3].device_time_ms: true
+        measurements[0].temperature_c: true
+        measurements[1].temperature_c: true
+        measurements[2].temperature_c: true
+        measurements[3].temperature_c: true
+        measurements[0].alarm: true
+        measurements[1].alarm: true
+        measurements[2].alarm: true
+        measurements[3].alarm: true

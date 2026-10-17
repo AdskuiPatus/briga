@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from madrigal.__main__ import main
 from madrigal.golden import (
@@ -33,11 +34,22 @@ DEMO_FILES = ("demo.pcapng", "demo_defect.pcapng",
 
 
 def _copy_golden(tmp_path: Path) -> Path:
-    """Копия golden-комплекта (манифест + записи) для правок в тестах."""
+    """Копия golden-комплекта (манифест + записи) для правок в тестах.
+
+    Оставляет только демо-случаи: они самодостаточны в tmp_path, а
+    thermostand-случаи ссылаются на ../case и ../schemas (вне tmp_path).
+    """
     for name in DEMO_FILES + ("demo-protocol.yaml", "demo-corpus.yaml"):
         shutil.copy(EXAMPLES / name, tmp_path / name)
+    data = yaml.safe_load(GOLDEN.read_text(encoding="utf-8"))
+    data["cases"] = [c for c in data["cases"]
+                     if not any(str(c.get(k, "")).startswith("../")
+                                for k in ("file", "schema", "corpus",
+                                          "journal"))]
     golden_file = tmp_path / "golden.yaml"
-    shutil.copy(GOLDEN, golden_file)
+    golden_file.write_text(
+        yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+        encoding="utf-8")
     return golden_file
 
 
@@ -146,14 +158,46 @@ def test_golden_manifest_valid():
     golden = load_golden(GOLDEN)
     assert golden.name == "demo-golden"
     kinds = {c.kind for c in golden.cases}
-    assert kinds == {"apply", "verify"}
+    assert kinds == {"apply", "verify", "journal"}
 
 
 def test_golden_all_pass_on_current_tool():
     """Повторное применение даёт согласованные результаты (R6)."""
     result = check_golden(GOLDEN)
     assert result["ok"], [c.get("diffs") for c in result["cases"]]
-    assert len(result["cases"]) == 5
+    assert len(result["cases"]) == 9
+
+
+def test_golden_journal_case_matches_exchange():
+    """Golden-случай журнала (R2) согласован: 0 противоречий, поля сверены."""
+    result = check_golden(GOLDEN)
+    jc = next(c for c in result["cases"] if c["kind"] == "journal")
+    assert jc["ok"], jc.get("diffs")
+    actual = jc["actual"]
+    assert actual["kind"] == "journal"
+    assert actual["actions_count"] > 0
+    assert actual["totals"].get("mismatch", 0) == 0
+    # каждое действие имеет вердикт и сверку полей
+    verdicts = {"matched", "mismatch", "uncovered", "incomplete", "missing"}
+    assert all(a["verdict"] in verdicts for a in actual["actions"])
+    assert all(a["checks"] for a in actual["actions"])
+
+
+def test_golden_journal_requires_schema_section(tmp_path):
+    """Журнал-случай над схемой без секции journal — явная ошибка (R2)."""
+    for name in DEMO_FILES + ("demo-protocol.yaml",):
+        shutil.copy(EXAMPLES / name, tmp_path / name)
+    (tmp_path / "журнал.csv").write_text("action_id\n", encoding="utf-8")
+    p = tmp_path / "golden.yaml"
+    p.write_text(
+        "version: 1\nname: x\ncases:\n"
+        "  - name: j\n    kind: journal\n"
+        f"    file: {DEMO_FILES[0]}\n"
+        "    schema: demo-protocol.yaml\n"
+        "    journal: журнал.csv\n", encoding="utf-8")
+    result = check_golden(p)
+    assert not result["ok"]
+    assert any("journal" in (c.get("error") or "") for c in result["cases"])
 
 
 def test_golden_detects_changed_expectation(tmp_path):

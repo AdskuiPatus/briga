@@ -1,0 +1,3102 @@
+{
+  "tool": {
+    "name": "madrigal-lab",
+    "version": "0.1.0"
+  },
+  "generated_at": "2026-10-17T18:12:07+00:00",
+  "corpus": {
+    "name": "thermostand-case",
+    "path": "case\\corpus.yaml",
+    "base": "C:\\Users\\Patis\\Documents\\прес качат\\madrigal-lab\\case",
+    "sha256": "6d8bb6bba2c830faab53adeb97a6746ad422743eabdb2b1ef8d23d3f9ea0d31b"
+  },
+  "schema": {
+    "name": "thermostand",
+    "path": "C:\\Users\\Patis\\Documents\\прес качат\\madrigal-lab\\case\\..\\schemas\\thermostand-protocol.yaml",
+    "source": "file",
+    "overridden": false,
+    "sha256": "f350a663280319db0a102587d74da2914ba72f63baf72c44dfc3591de991e97c",
+    "messages": [
+      "req_read_config",
+      "req_set_config",
+      "req_read_values",
+      "resp_read_config",
+      "resp_set_config",
+      "resp_read_values"
+    ],
+    "hypotheses": [
+      "h_seq_read_config",
+      "h_seq_set_config",
+      "h_set_config_echo",
+      "h_read_values_count",
+      "h_status_semantics",
+      "h_alarm_threshold",
+      "h_temp_encoding"
+    ]
+  },
+  "files": [
+    {
+      "path": "recordings/research/01_configuration.pcap",
+      "note": "базовый обмен конфигурацией: всё распознаётся, статусы ok",
+      "sha256": "6e9019561d4ae13c0622dc2ba11e87edc27addfe4679b23f65a3d9a57e387f7a",
+      "sessions": 2,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "h_read_values_count: проверка неполная — проверка неполная: пар с неизвестными значениями: 1"
+        ]
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 14,
+          "matched": {
+            "req_read_config": 5,
+            "req_set_config": 4,
+            "req_read_values": 5
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 156,
+          "described_bytes": 91,
+          "total_bytes": 156
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 14,
+          "matched": {
+            "resp_read_config": 5,
+            "resp_set_config": 4,
+            "resp_read_values": 5
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 287,
+          "described_bytes": 217,
+          "total_bytes": 287
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 5,
+            "ok": 5,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "incomplete",
+          "note": "проверка неполная: пар с неизвестными значениями: 1",
+          "pairs": {
+            "total": 5,
+            "ok": 4,
+            "unknown": 1
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/research/02_variations.pcapng",
+      "note": "вариации параметров: есть неопознанный служебный probe (0x7E) — честный неохват",
+      "sha256": "ce1b47e6e471b9e65369197b252ee787ae87107adaf1de02980f6f7db70bd4c5",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [
+          "a2b: неопознанных сообщений 1 — правилами схемы не описаны",
+          "b2a: неопознанных сообщений 1 — правилами схемы не описаны"
+        ],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "h_set_config_echo: проверка неполная — проверка неполная: пар с неизвестными значениями: 2"
+        ]
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 15,
+          "matched": {
+            "req_read_config": 4,
+            "req_set_config": 6,
+            "req_read_values": 4
+          },
+          "unmatched": 1,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 180,
+          "described_bytes": 106,
+          "total_bytes": 180
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 15,
+          "matched": {
+            "resp_read_config": 4,
+            "resp_set_config": 6,
+            "resp_read_values": 4
+          },
+          "unmatched": 1,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 428,
+          "described_bytes": 349,
+          "total_bytes": 428
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 6 парах",
+          "pairs": {
+            "total": 6,
+            "ok": 6,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "incomplete",
+          "note": "проверка неполная: пар с неизвестными значениями: 2",
+          "pairs": {
+            "total": 6,
+            "ok": 4,
+            "unknown": 2
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/research/03_combined_messages.pcap",
+      "note": "несколько сообщений в одном TCP-сегменте (combined), счётчики точны",
+      "sha256": "3590b1111504efa74e5fc841c85ecbd93221653e2d09a0b206c91942b7940407",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/additional/04_new_observations.pcapng",
+      "note": "дополнительные сессии чтения значений и установки порога",
+      "sha256": "a7ad6db37afc64d5516607efa16e33448ec93f460ec1a0c19db5b067593eccf0",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 2,
+            "req_set_config": 3,
+            "req_read_values": 3
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 105,
+          "described_bytes": 67,
+          "total_bytes": 105
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 2,
+            "resp_set_config": 3,
+            "resp_read_values": 3
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 2 парах",
+          "pairs": {
+            "total": 2,
+            "ok": 2,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/01_retransmission.pcap",
+      "note": "ретрансмиссия: дедуп по seq, число сообщений не завышается",
+      "sha256": "f4db652ada2a19dbbd45fc19a4b7b40d4fd04dc533653bd3988926a7f15e8085",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 1
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/02_reordered.pcapng",
+      "note": "переупорядочение сегментов: порядок по seq, не по приходу",
+      "sha256": "d039dd254f96c8942d0560bf81f14398b6327279112587a87ec44b88d2a156e8",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/03_missing_segment.pcap",
+      "note": "пропуск сегмента: не подменяется, partial/unknown фиксируются",
+      "sha256": "264e1503f162fe2979154829016a122a3a01b55fee56cdef045539c5420bd160",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [
+        "гипотеза h_seq_read_config опровергнута данными: контрпримеров 2 из 2 пар; первый: req_read_config#0=1 против resp_read_config#1=4",
+        "гипотеза h_read_values_count опровергнута данными: контрпримеров 3 из 3 пар; первый: req_read_values#1=1 против resp_read_values#1=2"
+      ],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 6,
+          "matched": {
+            "resp_set_config": 1,
+            "resp_read_config": 2,
+            "resp_read_values": 3
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 244,
+          "described_bytes": 214,
+          "total_bytes": 244
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "refuted",
+          "result": "fail",
+          "note": "опровергнуто на данных: контрпримеров 2 из 2 пар",
+          "pairs": {
+            "total": 2,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [
+            {
+              "a": {
+                "message": "req_read_config",
+                "index": 0,
+                "offset": 0,
+                "size": 8,
+                "value": 1,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  3,
+                  5,
+                  7
+                ]
+              },
+              "b": {
+                "message": "resp_read_config",
+                "index": 1,
+                "offset": 20,
+                "size": 20,
+                "value": 4,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  22
+                ]
+              },
+              "session": 0
+            },
+            {
+              "a": {
+                "message": "req_read_config",
+                "index": 3,
+                "offset": 36,
+                "size": 8,
+                "value": 4,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  20
+                ]
+              },
+              "b": {
+                "message": "resp_read_config",
+                "index": 4,
+                "offset": 102,
+                "size": 20,
+                "value": 7,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  30
+                ]
+              },
+              "session": 0
+            }
+          ],
+          "unpaired": {
+            "a": [
+              6
+            ],
+            "b": []
+          },
+          "counterexamples_total": 2
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "refuted",
+          "result": "fail",
+          "note": "опровергнуто на данных: контрпримеров 3 из 3 пар",
+          "pairs": {
+            "total": 3,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [
+            {
+              "a": {
+                "message": "req_read_values",
+                "index": 1,
+                "offset": 8,
+                "size": 9,
+                "value": 1,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  7
+                ]
+              },
+              "b": {
+                "message": "resp_read_values",
+                "index": 1,
+                "offset": 40,
+                "size": 24,
+                "value": 2,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  22
+                ]
+              },
+              "session": 0
+            },
+            {
+              "a": {
+                "message": "req_read_values",
+                "index": 4,
+                "offset": 44,
+                "size": 9,
+                "value": 2,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  20
+                ]
+              },
+              "b": {
+                "message": "resp_read_values",
+                "index": 3,
+                "offset": 64,
+                "size": 38,
+                "value": 4,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  30
+                ]
+              },
+              "session": 0
+            },
+            {
+              "a": {
+                "message": "req_read_values",
+                "index": 5,
+                "offset": 53,
+                "size": 9,
+                "value": 4,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  24,
+                  26,
+                  28
+                ]
+              },
+              "b": {
+                "message": "resp_read_values",
+                "index": 15,
+                "offset": 122,
+                "size": 122,
+                "value": 16,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  38,
+                  40,
+                  42,
+                  44
+                ]
+              },
+              "session": 0
+            }
+          ],
+          "unpaired": {
+            "a": [
+              7
+            ],
+            "b": []
+          },
+          "counterexamples_total": 3
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/04_snaplen_truncated.pcapng",
+      "note": "усечённый захват (snaplen): частичные сообщения отмечены",
+      "sha256": "de6b57e1e3d1c086aa84bbff62ceb462d4efbcdc13f1cf61c1ac97e765f952b9",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [
+          "b2a: ошибок фрейминга 1 — поток не размечен полностью"
+        ],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_seq_read_config: not_applicable — нет примеров сообщений: req_read_config (3), resp_read_config (0)",
+          "h_seq_set_config: not_applicable — нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+          "h_set_config_echo: not_applicable — нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+          "h_read_values_count: not_applicable — нет примеров сообщений: req_read_values (4), resp_read_values (0)",
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "b2a: неизвестных байтов 31 в 1 пропусках"
+        ]
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 0,
+          "matched": {},
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 1,
+          "unframed_bytes": 0,
+          "known_bytes": 0,
+          "described_bytes": 0,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 1,
+          "gap_bytes": 31,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_applicable",
+          "note": "нет примеров сообщений: req_read_config (3), resp_read_config (0)",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_applicable",
+          "note": "нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_applicable",
+          "note": "нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_applicable",
+          "note": "нет примеров сообщений: req_read_values (4), resp_read_values (0)",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/05_conflicting_overlap.pcap",
+      "note": "конфликтующее перекрытие: оставлен первый увиденный вариант",
+      "sha256": "abee9bbd87963c263eace6fb948f655590096296eaf1cf2264f04a0a93440ac9",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [
+          "b2a: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)"
+        ],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 1,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/06_missing_beginning.pcapng",
+      "note": "сессия без начала (midstream): не объявляется полноценной",
+      "sha256": "850aab35d90d265e12cc29a41062da11a6c594d7b0f85240921316c2f7012806",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [
+        "гипотеза h_seq_read_config опровергнута данными: контрпримеров 2 из 2 пар; первый: req_read_config#2=4 против resp_read_config#0=1"
+      ],
+      "findings": {
+        "coverage": [
+          "a2b: 3 Б данных вне сообщений"
+        ],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": [
+          "сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+        ]
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 7,
+          "matched": {
+            "req_read_values": 4,
+            "req_set_config": 1,
+            "req_read_config": 2
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 3,
+          "known_bytes": 71,
+          "described_bytes": 38,
+          "total_bytes": 74
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 1,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "refuted",
+          "result": "fail",
+          "note": "опровергнуто на данных: контрпримеров 2 из 2 пар",
+          "pairs": {
+            "total": 2,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [
+            {
+              "a": {
+                "message": "req_read_config",
+                "index": 2,
+                "offset": 31,
+                "size": 8,
+                "value": 4,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  14
+                ]
+              },
+              "b": {
+                "message": "resp_read_config",
+                "index": 0,
+                "offset": 0,
+                "size": 18,
+                "value": 1,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  2
+                ]
+              },
+              "session": 0
+            },
+            {
+              "a": {
+                "message": "req_read_config",
+                "index": 5,
+                "offset": 57,
+                "size": 8,
+                "value": 7,
+                "direction": "a2b",
+                "partial": false,
+                "packets": [
+                  22
+                ]
+              },
+              "b": {
+                "message": "resp_read_config",
+                "index": 3,
+                "offset": 55,
+                "size": 20,
+                "value": 4,
+                "direction": "b2a",
+                "partial": false,
+                "packets": [
+                  16
+                ]
+              },
+              "session": 0
+            }
+          ],
+          "unpaired": {
+            "a": [],
+            "b": [
+              6
+            ]
+          },
+          "counterexamples_total": 2
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/07_checksum_offload.pcap",
+      "note": "контрольные суммы offload: не влияет на разбор полезной нагрузки",
+      "sha256": "b2c665d464ef2d539b740cb42c53051743d16b95efc309c4942c61daaa849692",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    },
+    {
+      "path": "recordings/diagnostics/08_bad_checksum.pcapng",
+      "note": "",
+      "sha256": "53c2ad8535e1bd3853129c10ec4d6277da2152199c10039d5e2ca3aa9316a1b9",
+      "sessions": 1,
+      "ok": true,
+      "mismatches": [],
+      "violations": [],
+      "findings": {
+        "coverage": [],
+        "ambiguities": [],
+        "not_applicable": [
+          "h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+          "h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+        ],
+        "unknown": []
+      },
+      "directions": {
+        "a2b": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "req_read_config": 3,
+            "req_read_values": 4,
+            "req_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 79,
+          "described_bytes": 42,
+          "total_bytes": 79
+        },
+        "b2a": {
+          "scope_ok": true,
+          "messages": 8,
+          "matched": {
+            "resp_read_config": 3,
+            "resp_read_values": 4,
+            "resp_set_config": 1
+          },
+          "unmatched": 0,
+          "partial": 0,
+          "match_unknown": 0,
+          "framing_errors": 0,
+          "unframed_bytes": 0,
+          "known_bytes": 279,
+          "described_bytes": 239,
+          "total_bytes": 279
+        }
+      },
+      "stream": {
+        "a2b": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        },
+        "b2a": {
+          "gaps": 0,
+          "gap_bytes": 0,
+          "ambiguities": 0,
+          "retransmissions": 0
+        }
+      },
+      "midstream_sessions": 0,
+      "hypotheses": [
+        {
+          "id": "h_seq_read_config",
+          "statement": "ответ read-config повторяет seq соответствующего запроса",
+          "basis": [
+            "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 3 парах",
+          "pairs": {
+            "total": 3,
+            "ok": 3,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_seq_set_config",
+          "statement": "ответ set-config повторяет seq запроса, в том числе отклонённого",
+          "basis": [
+            "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_set_config_echo",
+          "statement": "принятый set-config подтверждает установленный period (status=ok)",
+          "basis": [
+            "research/01: установка period=1000 → ответ period=1000",
+            "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 1 парах",
+          "pairs": {
+            "total": 1,
+            "ok": 1,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_read_values_count",
+          "statement": "read-values возвращает ровно запрошенное число измерений (status=ok)",
+          "basis": [
+            "research/01: count=3 → 3 записи в ответе",
+            "diagnostics/03: count=16 → 16 записей"
+          ],
+          "status_before": "proposed",
+          "status_after": "checked",
+          "result": "pass",
+          "note": "подтверждено на 4 парах",
+          "pairs": {
+            "total": 4,
+            "ok": 4,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_status_semantics",
+          "statement": "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены",
+          "basis": [
+            "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02",
+            "research/01: enabled=false → read-values → status=04"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_alarm_threshold",
+          "statement": "alarm=1 тогда и только тогда, когда температура ≥ threshold",
+          "basis": [
+            "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0",
+            "research/01 (threshold 21.0): 18.5 → alarm=0"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        },
+        {
+          "id": "h_temp_encoding",
+          "statement": "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)",
+          "basis": [
+            "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+          ],
+          "status_before": "proposed",
+          "status_after": "proposed",
+          "result": "not_checked",
+          "note": "нет механической проверки — утверждение остаётся предположением исследователя",
+          "pairs": {
+            "total": 0,
+            "ok": 0,
+            "unknown": 0
+          },
+          "counterexamples": [],
+          "unpaired": {
+            "a": [],
+            "b": []
+          },
+          "counterexamples_total": 0
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "files": 12,
+    "ok": 12,
+    "mismatched": 0
+  },
+  "summary": {
+    "violations": [
+      "recordings/diagnostics/03_missing_segment.pcap: гипотеза h_seq_read_config опровергнута данными: контрпримеров 2 из 2 пар; первый: req_read_config#0=1 против resp_read_config#1=4",
+      "recordings/diagnostics/03_missing_segment.pcap: гипотеза h_read_values_count опровергнута данными: контрпримеров 3 из 3 пар; первый: req_read_values#1=1 против resp_read_values#1=2",
+      "recordings/diagnostics/06_missing_beginning.pcapng: гипотеза h_seq_read_config опровергнута данными: контрпримеров 2 из 2 пар; первый: req_read_config#2=4 против resp_read_config#0=1"
+    ],
+    "coverage": [
+      "recordings/research/02_variations.pcapng: a2b: неопознанных сообщений 1 — правилами схемы не описаны",
+      "recordings/research/02_variations.pcapng: b2a: неопознанных сообщений 1 — правилами схемы не описаны",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: b2a: ошибок фрейминга 1 — поток не размечен полностью",
+      "recordings/diagnostics/06_missing_beginning.pcapng: a2b: 3 Б данных вне сообщений"
+    ],
+    "ambiguities": [
+      "recordings/diagnostics/05_conflicting_overlap.pcap: b2a: конфликтующих перекрытий 1 (оставлен первый увиденный вариант)"
+    ],
+    "not_applicable": [
+      "recordings/research/01_configuration.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/01_configuration.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/01_configuration.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/02_variations.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/02_variations.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/02_variations.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/03_combined_messages.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/03_combined_messages.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/research/03_combined_messages.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/additional/04_new_observations.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/additional/04_new_observations.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/additional/04_new_observations.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/01_retransmission.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/01_retransmission.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/01_retransmission.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/02_reordered.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/02_reordered.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/02_reordered.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/03_missing_segment.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/03_missing_segment.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/03_missing_segment.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_seq_read_config: not_applicable — нет примеров сообщений: req_read_config (3), resp_read_config (0)",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_seq_set_config: not_applicable — нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_set_config_echo: not_applicable — нет примеров сообщений: req_set_config (1), resp_set_config (0)",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_read_values_count: not_applicable — нет примеров сообщений: req_read_values (4), resp_read_values (0)",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/05_conflicting_overlap.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/05_conflicting_overlap.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/05_conflicting_overlap.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/06_missing_beginning.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/06_missing_beginning.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/06_missing_beginning.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/07_checksum_offload.pcap: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/07_checksum_offload.pcap: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/07_checksum_offload.pcap: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/08_bad_checksum.pcapng: h_status_semantics: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/08_bad_checksum.pcapng: h_alarm_threshold: not_checked — нет механической проверки — утверждение остаётся предположением исследователя",
+      "recordings/diagnostics/08_bad_checksum.pcapng: h_temp_encoding: not_checked — нет механической проверки — утверждение остаётся предположением исследователя"
+    ],
+    "unknown": [
+      "recordings/research/01_configuration.pcap: h_read_values_count: проверка неполная — проверка неполная: пар с неизвестными значениями: 1",
+      "recordings/research/02_variations.pcapng: h_set_config_echo: проверка неполная — проверка неполная: пар с неизвестными значениями: 2",
+      "recordings/diagnostics/04_snaplen_truncated.pcapng: b2a: неизвестных байтов 31 в 1 пропусках",
+      "recordings/diagnostics/06_missing_beginning.pcapng: сессий без рукопожатия: 1 — начало соединения не захвачено, роли не объявляются"
+    ]
+  },
+  "summary_counts": {
+    "violations": 3,
+    "coverage": 4,
+    "ambiguities": 1,
+    "not_applicable": 40,
+    "unknown": 4
+  }
+}
