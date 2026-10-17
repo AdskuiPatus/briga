@@ -10,6 +10,12 @@
   python -m madrigal apply FILE --schema SCHEMA [--session N] [--out OUT.json]
       применить схему интерпретации: фрейминг, сопоставление, проверка
       гипотез; код выхода 3 — найдены контрпримеры (гипотеза опровергнута)
+  python -m madrigal journal FILE --journal CSV --schema SCHEMA
+                                 [--action ID] [--compare ACTION] [--out OUT.json]
+      найти обмен, связанный с известным действием исследователя, и сверить
+      наблюдаемый результат с декодированными полями (R2): поиск по сессии и
+      окну времени, сопоставление примеров с разными параметрами, переход к
+      исходным байтам; код выхода 4 — журнал противоречит записи (mismatch)
   python -m madrigal verify CORPUS [--schema SCHEMA] [--out REPORT.json]
       проверить интерпретацию по корпусу записей с ожиданиями (R4):
       сводка нарушений/неохвата/неоднозначностей/неприменимых/неизвестных;
@@ -290,6 +296,135 @@ def cmd_apply(args: argparse.Namespace) -> int:
         print(f"машиночитаемый результат: {args.out}")
 
     return 3 if any_refuted else 0
+
+
+def cmd_journal(args: argparse.Namespace) -> int:
+    """Найти обмен, связанный с известным действием журнала, и сверить (R2)."""
+    import hashlib
+
+    from . import journal as jn
+
+    try:
+        schema = load_schema_file(args.schema)
+    except SchemaError as e:
+        print("схема не прошла валидацию:", file=sys.stderr)
+        for err in e.errors:
+            print(f"  - {err}", file=sys.stderr)
+        return 1
+    if schema.journal is None:
+        print("в схеме нет секции journal — сопоставление действий с "
+              "сообщениями и сверка полей невозможны", file=sys.stderr)
+        print("добавьте раздел journal (см. schemas/thermostand-protocol.yaml)",
+              file=sys.stderr)
+        return 1
+
+    try:
+        actions, jwarn = jn.load_journal(args.journal)
+    except jn.JournalError as e:
+        print("журнал действий непригоден:", file=sys.stderr)
+        for err in e.errors:
+            print(f"  - {err}", file=sys.stderr)
+        return 1
+
+    cap, parsed, ts, sessions = _load(args.file, get_profile(args.limits))
+    acts = jn.filter_capture(actions, Path(cap.path).name)
+    if not acts:
+        print(f"в журнале нет действий для записи {Path(cap.path).name}",
+              file=sys.stderr)
+        return 2
+
+    directions = schema.scope_directions or ["a2b", "b2a"]
+    limits = get_profile(args.limits)
+    progress = StderrProgress(quiet=args.quiet)
+    progress.start_stage(f"сессий {len(sessions)}", len(sessions))
+
+    msgs_by_session = {}
+    messages_total = 0
+    for si, s in enumerate(sessions):
+        progress.check_cancel()
+        streams = {d: build_stream(ts, parsed, s, d) for d in directions}
+        results, _hyps = analyze_session(schema, streams)
+        refs = jn.collect_messages(si, streams, results, ts)
+        msgs_by_session[si] = refs
+        messages_total += sum(len(r.msg.fields) for r in refs)
+        progress.advance(note=f"сессия {si}")
+
+    spans = jn.session_spans(sessions, ts)
+    matches = jn.correlate(acts, msgs_by_session, spans, schema.journal)
+    totals = jn.summarize(matches)
+
+    violations = check_messages(limits, messages_total)
+    if violations:
+        raise LimitExceeded(limits, violations)
+
+    print(f"схема:   {schema.name} (sha256 {schema.sha256[:12]}…)")
+    print(f"файл:    {Path(cap.path).name} — сессий {len(sessions)}")
+    print(f"журнал:  {Path(args.journal).name} — действий {len(acts)} "
+          f"для этой записи (всего {len(actions)})")
+    for w in jwarn:
+        print(f"  ! журнал: {w}")
+
+    if args.compare:
+        print()
+        print(jn.render_compare(matches, args.compare))
+    else:
+        sel = matches
+        if args.action:
+            sel = [m for m in matches if m.action.action_id == args.action]
+            if not sel:
+                print(f"действия {args.action} в этой записи нет", file=sys.stderr)
+                return 2
+        print()
+        print(jn.render_table(sel))
+        if args.action:
+            m = sel[0]
+            print(f"\nдействие {m.action.action_id} ({m.action.action}) — "
+                  f"вердикт: {m.verdict}")
+            if m.note:
+                print(f"  {m.note}")
+            print(f"  параметры:  {json.dumps(m.action.parameters, ensure_ascii=False)}")
+            print(f"  наблюдено:  {json.dumps(m.action.observed_result, ensure_ascii=False)}")
+            for role, ref in (("запрос", m.request), ("ответ", m.response)):
+                if ref is None:
+                    print(f"  {role}: не найден")
+                    continue
+                print(f"  {role}: {ref.id or 'вне интерпретации'} "
+                      f"[{ref.direction} #{ref.index}] "
+                      f"байты {ref.start}…{ref.end}, время "
+                      f"{datetime.fromtimestamp(ref.t0, timezone.utc).isoformat(timespec='milliseconds')}")
+            checked = [c for c in m.checks if c.equal is not None]
+            if checked:
+                print("  сверка полей:")
+                for c in m.checks:
+                    mark = ("OK  " if c.equal else "FAIL") if c.equal is not None else "--"
+                    print(f"    [{mark}] {c.path}: журнал={c.observed!r} "
+                          f"запись={c.decoded!r}"
+                          + (f" ({c.note})" if c.note else ""))
+
+    print("\nитог: " + ", ".join(f"{k} {v}" for k, v in totals.items()
+                                if v))
+    print("поиск: действие -> сессия + окно времени + тип сообщения; "
+          "сверка полей -- по bindings секции journal")
+
+    if args.out:
+        journal_sha = hashlib.sha256(Path(args.journal).read_bytes()).hexdigest()
+        payload = {
+            "tool": {"name": "madrigal-lab", "version": __version__},
+            "generated_at": datetime.now(timezone.utc)
+                            .isoformat(timespec="seconds"),
+            "schema": {"name": schema.name, "sha256": schema.sha256,
+                       "path": schema.source_path},
+            "file": {"path": str(cap.path), "sha256": cap.sha256},
+            "journal": {"path": str(args.journal), "sha256": journal_sha,
+                        "actions": len(acts), "warnings": jwarn},
+            "matches": [m.to_dict() for m in matches],
+            "totals": totals,
+        }
+        Path(args.out).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"машиночитаемый результат: {args.out}")
+
+    return 4 if totals.get("mismatch") else 0
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -656,6 +791,28 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--quiet", action="store_true",
                    help="не печатать ход в stderr (отмена Ctrl+C работает)")
     p.set_defaults(func=cmd_apply)
+
+    p = sub.add_parser(
+        "journal",
+        help="найти обмен, связанный с действием журнала, и сверить (R2)")
+    p.add_argument("file", help="запись (.pcap/.pcapng)")
+    p.add_argument("--journal", required=True,
+                   help="журнал действий CSV (capture/session/action_id/"
+                        "start_utc/end_utc/action/parameters/observed_result)")
+    p.add_argument("--schema", required=True,
+                   help="схема интерпретации с секцией journal")
+    p.add_argument("--action", default=None,
+                   help="показать детали одного действия (action_id)")
+    p.add_argument("--compare", default=None, metavar="ACTION",
+                   help="сопоставить примеры одного действия с разными "
+                        "параметрами (read-config|set-config|read-values|…)")
+    p.add_argument("--out", default=None,
+                   help="куда записать машиночитаемый результат JSON")
+    p.add_argument("--limits", default="control",
+                   choices=("control", "none"), help=LIMITS_HELP)
+    p.add_argument("--quiet", action="store_true",
+                   help="не печатать ход в stderr (отмена Ctrl+C работает)")
+    p.set_defaults(func=cmd_journal)
 
     p = sub.add_parser(
         "verify", help="проверить интерпретацию по корпусу записей (R4)")

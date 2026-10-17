@@ -50,6 +50,7 @@
         <button class="tab" id="tab-b2a" data-dir="b2a"></button>
         <button class="tab" id="tab-compare">Сравнение</button>
         <button class="tab" id="tab-interpret">Интерпретация</button>
+        <button class="tab" id="tab-journal">Журнал</button>
       </nav>
 
       <div id="stream-pane">
@@ -145,6 +146,32 @@
           <div id="corpus-status" class="muted"></div>
           <div id="corpus-stale" class="stale-banner" hidden></div>
           <div id="corpus-result"></div>
+        </div>
+      </div>
+
+      <div id="journal-pane" hidden>
+        <div class="interp-toolbar">
+          <input id="journal-path" placeholder="путь к журналу действий .csv"
+                 spellcheck="false">
+          <button id="btn-journal-run" class="primary"
+                  title="сопоставить действия журнала с обменом записи">Сопоставить</button>
+          <span class="toolbar-sep"></span>
+          <label class="muted" for="journal-compare">сравнить примеры:</label>
+          <select id="journal-compare"></select>
+          <button id="btn-journal-compare"
+                  title="параметры всех вхождений рядом + повторяющиеся закономерности">Сравнить</button>
+          <span id="journal-status" class="muted"></span>
+        </div>
+        <div class="journal-grid">
+          <div class="journal-results">
+            <div id="journal-summary"></div>
+            <div id="journal-table"></div>
+            <div id="journal-compare-out"></div>
+          </div>
+          <div id="journal-detail" class="journal-detail">
+            <div class="muted">выберите действие слева, чтобы увидеть сверку
+              полей и перейти к исходным байтам</div>
+          </div>
         </div>
       </div>
     </div>

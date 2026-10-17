@@ -735,7 +735,42 @@ table.msg-table td:nth-child(5) { white-space: normal; }
 .corpus-file .cf-find { color: var(--warn); padding: 1px 0; }
 .corpus-file .cf-find b { color: var(--text); font-weight: 500; }
 
+/* журнал (R2) */
+#journal-status { font-size: 12.5px; }
+.journal-grid {
+  display: grid;
+  grid-template-columns: minmax(440px, 56%) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.journal-results { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.journal-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.journal-detail h4 { margin: 0 0 4px; }
+.journal-cmp {
+  white-space: pre;
+  overflow-x: auto;
+  font-size: 12.5px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 0;
+}
+table.msg-table tr.journal-row { cursor: pointer; }
+table.msg-table tr.journal-row.active td { background: var(--sel); }
+
 @media (max-width: 1100px) {
   .interp-grid { grid-template-columns: 1fr; }
+  .journal-grid { grid-template-columns: 1fr; }
   main { grid-template-columns: 1fr; }
 }

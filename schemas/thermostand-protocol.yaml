@@ -1,0 +1,212 @@
+# Интерпретация протокола «Термостенд» (реальный кейс MADRIGAL).
+#
+# Термостенд — измерительное устройство; штандартный клиент читает настройки,
+# меняет их и запрашивает порции температурных измерений. Интерпретация
+# выведена из research/, additional/ и проверена на diagnostics/.
+#
+# Кадр (общий для запросов и ответов), 8-байтовый заголовок:
+#   A6 5C | ver(1)=00 | length(u16 LE) | seq(u8) | flags(u8) | type(u8) | тело[length]
+#   flags: 00 = запрос, 01 = ответ
+#   type:  10 = read-config, 20 = set-config, 30 = read-values
+#          (иные значения — нераспознанная команда, в интерпретацию не входит)
+#
+# Тело по типу:
+#   config (set-/read-config): enabled(u8) | period_ms(u16 BE) |
+#           threshold_c(i16 BE, сотые единицы) | label_len(u8) | label(label_len Б, UTF-8)
+#   read-values запрос:  count(u8)
+#   read-values ответ:   status(u8) | count(u8) | count × measurement
+#   measurement: device_time_ms(u32 BE) | temperature_c(i16 BE, /100) | alarm(u8)
+#
+# status: 00 ok, 01 unsupported_command, 02 malformed_body,
+#         03 value_out_of_range, 04 measurement_disabled
+#
+# Строки «когда что видели» — основания (basis), а не доказательства.
+version: 1
+name: thermostand
+scope:
+  directions: [a2b, b2a]
+
+framing:
+  magic: "A6 5C"                       # маркер начала каждого сообщения
+  header: 8                            # A6 5C + ver + length(2) + seq + flags + type
+  length: {offset: 3, type: u16le, includes: payload}   # длина тела после заголовка
+  min: 8
+  max: 65543                           # заголовок + максимум для u16
+
+messages:
+  # ------------------------------------------------- запросы (a2b) --
+  - id: req_read_config
+    direction: a2b
+    when: [{offset: 6, type: u8, eq: 0}, {offset: 7, type: u8, eq: 16}]
+    fields:
+      - {name: ver, offset: 2, type: u8}
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+
+  - id: req_set_config
+    direction: a2b
+    when: [{offset: 6, type: u8, eq: 0}, {offset: 7, type: u8, eq: 32}]
+    fields:
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+      - {name: enabled, offset: 8, type: u8}
+      - {name: period, offset: 9, type: u16be}
+      - {name: threshold, offset: 11, type: i16be}
+      - {name: label_len, offset: 13, type: u8}
+      - {name: label, offset: 14, type: bytes, length: {from_field: label_len}}
+
+  - id: req_read_values
+    direction: a2b
+    when: [{offset: 6, type: u8, eq: 0}, {offset: 7, type: u8, eq: 48}]
+    fields:
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+      - {name: count, offset: 8, type: u8}
+
+  # ------------------------------------------------- ответы (b2a) --
+  - id: resp_read_config
+    direction: b2a
+    when: [{offset: 6, type: u8, eq: 1}, {offset: 7, type: u8, eq: 16}]
+    fields:
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+      - {name: status, offset: 8, type: u8}
+      - {name: enabled, offset: 9, type: u8}
+      - {name: period, offset: 10, type: u16be}
+      - {name: threshold, offset: 12, type: i16be}
+      - {name: label_len, offset: 14, type: u8}
+      - {name: label, offset: 15, type: bytes, length: {from_field: label_len}}
+
+  - id: resp_set_config
+    direction: b2a
+    when: [{offset: 6, type: u8, eq: 1}, {offset: 7, type: u8, eq: 32}]
+    fields:
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+      - {name: status, offset: 8, type: u8}
+      - {name: enabled, offset: 9, type: u8}
+      - {name: period, offset: 10, type: u16be}
+      - {name: threshold, offset: 12, type: i16be}
+      - {name: label_len, offset: 14, type: u8}
+      - {name: label, offset: 15, type: bytes, length: {from_field: label_len}}
+
+  - id: resp_read_values
+    direction: b2a
+    when: [{offset: 6, type: u8, eq: 1}, {offset: 7, type: u8, eq: 48}]
+    fields:
+      - {name: seq, offset: 5, type: u8}
+      - {name: flags, offset: 6, type: u8}
+      - {name: type, offset: 7, type: u8}
+      - {name: status, offset: 8, type: u8}
+      - {name: count, offset: 9, type: u8}
+      - name: meas
+        offset: 10
+        repeat: {count: count, size: 7}
+        fields:
+          - {name: time, offset: 0, type: u32be}
+          - {name: temp, offset: 4, type: i16be}
+          - {name: alarm, offset: 6, type: u8}
+
+hypotheses:
+  # Ниже — механически проверяемые утверждения (check.pairs expect:equal).
+  - id: h_seq_read_config
+    statement: "ответ read-config повторяет seq соответствующего запроса"
+    basis:
+      - "research/01: запросы seq=01,06,09 → ответы с теми же seq"
+    status: proposed
+    check:
+      pairs:
+        a: {message: req_read_config, field: seq}
+        b: {message: resp_read_config, field: seq}
+      expect: equal
+
+  - id: h_seq_set_config
+    statement: "ответ set-config повторяет seq запроса, в том числе отклонённого"
+    basis:
+      - "research/02: отклонённые set-config seq=09,0B имеют ответы с тем же seq"
+    status: proposed
+    check:
+      pairs:
+        a: {message: req_set_config, field: seq}
+        b: {message: resp_set_config, field: seq}
+      expect: equal
+
+  - id: h_set_config_echo
+    statement: "принятый set-config подтверждает установленный period (status=ok)"
+    basis:
+      - "research/01: установка period=1000 → ответ period=1000"
+      - "additional/04: установка 5000 → ответ 5000; 500 → ответ 500"
+    status: proposed
+    check:
+      pairs:
+        a: {message: req_set_config, field: period}
+        b: {message: resp_set_config, field: period}
+      expect: equal
+
+  - id: h_read_values_count
+    statement: "read-values возвращает ровно запрошенное число измерений (status=ok)"
+    basis:
+      - "research/01: count=3 → 3 записи в ответе"
+      - "diagnostics/03: count=16 → 16 записей"
+    status: proposed
+    check:
+      pairs:
+        a: {message: req_read_values, field: count}
+        b: {message: resp_read_values, field: count}
+      expect: equal
+
+  # Ниже — утверждения без механической проверки: остаются предположениями
+  # исследователя (R3: показывать, что получено правилами, а что — гипотеза).
+  - id: h_status_semantics
+    statement: "status=03 означает отклонение параметров, 02 — повреждённое тело, 04 — измерения выключены"
+    basis:
+      - "research/02: period=99 (вне диапазона) → status=03; label с невалидным UTF-8 → status=02"
+      - "research/01: enabled=false → read-values → status=04"
+    status: proposed
+
+  - id: h_alarm_threshold
+    statement: "alarm=1 тогда и только тогда, когда температура ≥ threshold"
+    basis:
+      - "research/01 (threshold 19.0): 21.25/25.0 → alarm=1, -5.5 → alarm=0"
+      - "research/01 (threshold 21.0): 18.5 → alarm=0"
+    status: proposed
+
+  - id: h_temp_encoding
+    statement: "temperature_c и threshold_c — знаковые целые в сотых единицах (i16 BE)"
+    basis:
+      - "research/01: FDA0 → -5.50; research/02: FF06 → -2.50 (знаковые, дробные)"
+    status: proposed
+
+# --------------------------------------------------------------- журнал (R2) --
+# Связь журнала действий исследователя с этой интерпретацией: каких действий —
+# какие сообщения и как сверять наблюдаемый результат с декодированными полями.
+# Благодаря этому поиск «действие → обмен» и сверка работают без знания
+# протокола ядром: всё декларативно здесь.
+journal:
+  actions:
+    read-config:          {request: req_read_config,  response: resp_read_config}
+    set-config:           {request: req_set_config,   response: resp_set_config}
+    read-values:          {request: req_read_values,  response: resp_read_values}
+    probe-invalid-period: {request: req_set_config,   response: resp_set_config}
+    probe-invalid-utf8:   {request: req_set_config,   response: resp_set_config}
+    probe-unknown:        {unknown: true}     # тип 0x7E — вне интерпретации
+  status_map:
+    0: ok
+    1: unsupported_command
+    2: malformed_body
+    3: value_out_of_range
+    4: measurement_disabled
+  bindings:
+    - {observed: status, decoded: status, status: true}
+    - {observed: configuration.enabled, decoded: enabled, boolean: true}
+    - {observed: configuration.period_ms, decoded: period}
+    - {observed: configuration.threshold_c, decoded: threshold, scale: 0.01}
+    - {observed: configuration.label, decoded: label}
+    - {observed: "measurements[i].device_time_ms", decoded: "meas[i].time"}
+    - {observed: "measurements[i].temperature_c", decoded: "meas[i].temp", scale: 0.01}
+    - {observed: "measurements[i].alarm", decoded: "meas[i].alarm", boolean: true}

@@ -51,10 +51,18 @@ MATCH_DIRECTIONS = DIRECTIONS + ("any",)
 HYPOTHESIS_STATUSES = ("proposed", "checked", "refuted", "refined")
 
 # типы полей: имя -> (фиксированный размер | None = переменный), функция декодирования
+# беззнаковые целые — допустимы и в полях длины фрейминга
 FIXED_TYPES = ("u8", "u16le", "u16be", "u32le", "u32be")
+# знаковые целые — только для полей/условий (значения с знаком: температура и т.п.)
+SIGNED_TYPES = ("i8", "i16le", "i16be", "i32le", "i32be")
+INT_TYPES = FIXED_TYPES + SIGNED_TYPES
 VAR_TYPES = ("bytes", "ascii")
-ALL_TYPES = FIXED_TYPES + VAR_TYPES
-TYPE_SIZE = {"u8": 1, "u16le": 2, "u16be": 2, "u32le": 4, "u32be": 4}
+ALL_TYPES = INT_TYPES + VAR_TYPES
+TYPE_SIZE = {
+    "u8": 1, "u16le": 2, "u16be": 2, "u32le": 4, "u32be": 4,
+    "i8": 1, "i16le": 2, "i16be": 2, "i32le": 4, "i32be": 4,
+}
+RECORD_TYPE = "record"   # служебный тип поля-повтора (не скаляр)
 
 
 class SchemaError(Exception):
@@ -81,6 +89,15 @@ class FieldDef:
     type: str
     length: Optional[int] = None           # фиксированная длина для bytes/ascii
     from_field: Optional[str] = None       # длина из значения другого поля
+    # повтор фиксированной записи (type == RECORD_TYPE): поле не скаляр,
+    # а серия одинаковых записей, каждая разбирается по subfields.
+    repeat_count: Optional[str] = None     # имя ранее описанного поля со счётчиком
+    repeat_size: Optional[int] = None      # размер одной записи, Б
+    subfields: List["FieldDef"] = field(default_factory=list)  # поля записи
+
+    @property
+    def is_record(self) -> bool:
+        return self.type == RECORD_TYPE
 
 
 @dataclass
@@ -89,6 +106,20 @@ class MessageDef:
     direction: str = "any"
     when: List[Condition] = field(default_factory=list)
     fields: List[FieldDef] = field(default_factory=list)
+
+
+def _field_to_dict(f: FieldDef) -> Dict[str, Any]:
+    """Каноническое представление поля (в т.ч. поля-повтора)."""
+    fd: Dict[str, Any] = {"name": f.name, "offset": f.offset, "type": f.type}
+    if f.is_record:
+        fd["repeat"] = {"count": f.repeat_count, "size": f.repeat_size}
+        fd["fields"] = [_field_to_dict(s) for s in f.subfields]
+        return fd
+    if f.length is not None:
+        fd["length"] = f.length
+    if f.from_field is not None:
+        fd["length"] = {"from_field": f.from_field}
+    return fd
 
 
 @dataclass
@@ -120,6 +151,9 @@ class PairCheck:
     a: PairEndpoint
     b: PairEndpoint
     expect: str = "equal"
+    # если задано — пары сопоставляются по значению этого поля (ключ корреляции,
+    # например seq), а не по порядку: устойчиво к пропускам и переупорядочиванию
+    pair_by: Optional[str] = None
 
 
 @dataclass
@@ -131,6 +165,44 @@ class Hypothesis:
     check: Optional[PairCheck] = None
 
 
+# ------------------------------------- сверка с журналом действий (R2) ----
+
+@dataclass
+class JournalBind:
+    """Привязка одного поля наблюдаемого результата к полю сообщения."""
+
+    observed: str          # путь в observed_result (точки; [i] — индекс серии)
+    decoded: str           # плоское имя поля сообщения ([i] подставляется)
+    scale: float = 1.0     # множитель декодированного значения (i16 /100 …)
+    boolean: bool = False  # 0/1 → false/true
+    status: bool = False   # числовой status → имя через status_map
+
+
+@dataclass
+class JournalSpec:
+    """Декларативная связь журнала действий с интерпретацией."""
+
+    actions: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    # действие → {"request": id, "response": id} либо {"unknown": True}
+    status_map: Dict[int, str] = field(default_factory=dict)
+    binds: List[JournalBind] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        out: Dict[str, Any] = {}
+        if self.actions:
+            out["actions"] = {k: dict(v) for k, v in self.actions.items()}
+        if self.status_map:
+            out["status_map"] = {int(k): v for k, v in self.status_map.items()}
+        if self.binds:
+            out["bindings"] = [
+                {k: v for k, v in {
+                    "observed": b.observed, "decoded": b.decoded,
+                    "scale": b.scale, "boolean": b.boolean, "status": b.status,
+                }.items() if v not in (1.0, False, None)}
+                for b in self.binds]
+        return out
+
+
 @dataclass
 class Schema:
     version: int
@@ -139,6 +211,7 @@ class Schema:
     framing: List[FramingRule]
     messages: List[MessageDef]
     hypotheses: List[Hypothesis]
+    journal: Optional[JournalSpec] = None
     source_text: str = ""
     source_path: str = ""
 
@@ -209,12 +282,7 @@ class Schema:
                 ]
             md["fields"] = []
             for f in m.fields:
-                fd: Dict[str, Any] = {"name": f.name, "offset": f.offset, "type": f.type}
-                if f.length is not None:
-                    fd["length"] = f.length
-                if f.from_field is not None:
-                    fd["length"] = {"from_field": f.from_field}
-                md["fields"].append(fd)
+                md["fields"].append(_field_to_dict(f))
             msgs.append(md)
         out["messages"] = msgs
 
@@ -236,9 +304,15 @@ class Schema:
                     },
                     "expect": h.check.expect,
                 }
+                if h.check.pair_by:
+                    hd["check"]["pair_by"] = h.check.pair_by
             hyps.append(hd)
         if hyps:
             out["hypotheses"] = hyps
+        if self.journal:
+            jd = self.journal.to_dict()
+            if jd:
+                out["journal"] = jd
         return out
 
 
@@ -296,8 +370,8 @@ def _parse_condition(raw: Any, path: str, errors: List[str]) -> Optional[Conditi
     if "bytes" in d:
         b = parse_hex(d["bytes"], f"{path}.bytes", errors)
         return Condition(offset=d["offset"], bytes=b) if b is not None else None
-    if "type" not in d or d["type"] not in FIXED_TYPES:
-        errors.append(f"{path}.type: ожидается одно из {', '.join(FIXED_TYPES)}")
+    if "type" not in d or d["type"] not in INT_TYPES:
+        errors.append(f"{path}.type: ожидается одно из {', '.join(INT_TYPES)}")
         return None
     has_eq, has_in = "eq" in d, "in" in d
     if has_eq == has_in:  # ни того, ни другого — или оба сразу
@@ -316,11 +390,15 @@ def _parse_condition(raw: Any, path: str, errors: List[str]) -> Optional[Conditi
     return Condition(offset=d["offset"], type=d["type"], eq=d["eq"])
 
 
-def _parse_field(raw: Any, path: str, seen_names: set, errors: List[str]) -> Optional[FieldDef]:
+def _parse_field(raw: Any, path: str, seen_names: set, errors: List[str],
+                 allow_record: bool = True) -> Optional[FieldDef]:
     d = _expect_dict(raw, path, errors)
     if d is None:
         return None
-    _check_keys(d, {"name", "offset", "type", "length"}, path, errors)
+    allowed = {"name", "offset", "type", "length"}
+    if allow_record:
+        allowed |= {"repeat", "fields"}
+    _check_keys(d, allowed, path, errors)
     ok = True
     name = d.get("name")
     if not isinstance(name, str) or not name:
@@ -332,8 +410,58 @@ def _parse_field(raw: Any, path: str, seen_names: set, errors: List[str]) -> Opt
     if not isinstance(d.get("offset"), int) or d.get("offset", -1) < 0:
         errors.append(f"{path}.offset: ожидается целое ≥ 0")
         ok = False
+
+    # --- поле-повтор (запись фиксированной длины) ---
+    if "repeat" in d:
+        if not allow_record:
+            errors.append(f"{path}.repeat: вложенные повторы не поддерживаются")
+            return None
+        rd = _expect_dict(d["repeat"], f"{path}.repeat", errors)
+        repeat_count = None
+        repeat_size = None
+        if rd is not None:
+            _check_keys(rd, {"count", "size"}, f"{path}.repeat", errors)
+            rc = rd.get("count")
+            if isinstance(rc, str) and rc:
+                if rc not in seen_names:
+                    errors.append(
+                        f"{path}.repeat.count: поле {rc!r} не описано ранее "
+                        "в этом сообщении")
+                    ok = False
+                else:
+                    repeat_count = rc
+            else:
+                errors.append(f"{path}.repeat.count: ожидается имя ранее описанного поля")
+                ok = False
+            rs = rd.get("size")
+            if isinstance(rs, int) and rs > 0:
+                repeat_size = rs
+            else:
+                errors.append(f"{path}.repeat.size: ожидается целое > 0")
+                ok = False
+        subfields: List[FieldDef] = []
+        subnames: set = set()
+        raw_subs = _expect_list(d.get("fields"), f"{path}.fields", errors)
+        if not raw_subs:
+            errors.append(f"{path}.fields: для repeat нужен непустой список полей записи")
+            ok = False
+        else:
+            for i, raw_s in enumerate(raw_subs):
+                s = _parse_field(raw_s, f"{path}.fields[{i}]", subnames, errors,
+                                 allow_record=False)
+                if s is None:
+                    ok = False
+                else:
+                    subnames.add(s.name)
+                    subfields.append(s)
+        if not ok:
+            return None
+        return FieldDef(name=name, offset=d["offset"], type=RECORD_TYPE,
+                        repeat_count=repeat_count, repeat_size=repeat_size,
+                        subfields=subfields)
+
     ftype = d.get("type")
-    if ftype not in ALL_TYPES:
+    if ftype not in ALL_TYPES or ftype == RECORD_TYPE:
         errors.append(f"{path}.type: ожидается одно из {', '.join(ALL_TYPES)}")
         ok = False
 
@@ -513,7 +641,7 @@ def _parse_hypothesis(raw: Any, path: str, msg_index: Dict[str, MessageDef],
         if cd is None:
             ok = False
         else:
-            _check_keys(cd, {"pairs", "expect"}, f"{path}.check", errors)
+            _check_keys(cd, {"pairs", "expect", "pair_by"}, f"{path}.check", errors)
             pairs = _expect_dict(cd.get("pairs"), f"{path}.check.pairs", errors)
             if pairs is None:
                 ok = False
@@ -559,13 +687,125 @@ def _parse_hypothesis(raw: Any, path: str, msg_index: Dict[str, MessageDef],
                 if expect != "equal":
                     errors.append(f"{path}.check.expect: поддерживается 'equal'")
                     ok = False
+                pair_by = None
+                if "pair_by" in cd:
+                    pb = cd["pair_by"]
+                    if not isinstance(pb, str) or not pb:
+                        errors.append(f"{path}.check.pair_by: ожидается имя поля")
+                        ok = False
+                    elif set(endpoints) == {"a", "b"}:
+                        missing = [s for s in ("a", "b")
+                                   if pb not in {f.name for f in
+                                                 msg_index[endpoints[s].message].fields}]
+                        if missing:
+                            errors.append(
+                                f"{path}.check.pair_by: поля {pb!r} нет у сообщения "
+                                + ", ".join(endpoints[s].message for s in missing))
+                            ok = False
+                        else:
+                            pair_by = pb
                 if set(endpoints) == {"a", "b"}:
-                    check = PairCheck(a=endpoints["a"], b=endpoints["b"], expect=expect)
+                    check = PairCheck(a=endpoints["a"], b=endpoints["b"],
+                                      expect=expect, pair_by=pair_by)
 
     if not ok:
         return None
     return Hypothesis(id=hid, statement=statement, basis=list(basis),
                       status=status, check=check)
+
+
+def _parse_journal(raw: Any, path: str, errors: List[str],
+                   msg_index: Dict[str, MessageDef]) -> Optional[JournalSpec]:
+    """Разобрать секцию journal: привязки действий журнала к сообщениям."""
+    d = _expect_dict(raw, path, errors)
+    if d is None:
+        return None
+    _check_keys(d, {"actions", "status_map", "bindings"}, path, errors)
+
+    actions: Dict[str, Dict[str, Any]] = {}
+    am = _expect_dict(d.get("actions"), f"{path}.actions", errors)
+    if am is not None:
+        for name, val in am.items():
+            ap = f"{path}.actions.{name}"
+            if not isinstance(name, str) or not name:
+                errors.append(f"{ap}: имя действия — непустая строка")
+                continue
+            sub = _expect_dict(val, ap, errors)
+            if sub is None:
+                continue
+            _check_keys(sub, {"request", "response", "unknown"}, ap, errors)
+            entry: Dict[str, Any] = {}
+            unknown = sub.get("unknown", False)
+            if unknown is not True and unknown is not False:
+                errors.append(f"{ap}.unknown: ожидается true/false")
+            entry["unknown"] = bool(unknown)
+            for role in ("request", "response"):
+                mid = sub.get(role)
+                if mid is None:
+                    continue
+                if not isinstance(mid, str):
+                    errors.append(f"{ap}.{role}: ожидается id сообщения")
+                    continue
+                if msg_index and mid not in msg_index:
+                    errors.append(f"{ap}.{role}: сообщения {mid!r} нет в схеме")
+                    continue
+                entry[role] = mid
+            if not entry["unknown"] and not (entry.get("request")
+                                             or entry.get("response")):
+                errors.append(f"{ap}: задайте request/response либо unknown: true")
+                continue
+            actions[name] = entry
+
+    status_map: Dict[int, str] = {}
+    sm = _expect_dict(d.get("status_map"), f"{path}.status_map", errors)
+    if sm is not None:
+        for k, v in sm.items():
+            try:
+                code = int(k)
+            except (TypeError, ValueError):
+                errors.append(f"{path}.status_map: ключ {k!r} — не число")
+                continue
+            if not isinstance(v, str):
+                errors.append(f"{path}.status_map[{k}]: ожидается строка")
+                continue
+            status_map[code] = v
+
+    binds: List[JournalBind] = []
+    for i, raw_b in enumerate(_expect_list(d.get("bindings"),
+                                           f"{path}.bindings", errors) or []):
+        bp = f"{path}.bindings[{i}]"
+        b = _expect_dict(raw_b, bp, errors)
+        if b is None:
+            continue
+        _check_keys(b, {"observed", "decoded", "scale", "boolean", "status"},
+                    bp, errors)
+        observed = b.get("observed")
+        decoded = b.get("decoded")
+        if not isinstance(observed, str) or not observed:
+            errors.append(f"{bp}.observed: ожидается непустой путь")
+            continue
+        if not isinstance(decoded, str) or not decoded:
+            errors.append(f"{bp}.decoded: ожидается имя поля")
+            continue
+        if "[i]" in observed and "[i]" not in decoded:
+            errors.append(f"{bp}: observed использует [i], а decoded — нет")
+            continue
+        if "[i]" in decoded and "[i]" not in observed:
+            errors.append(f"{bp}: decoded использует [i], а observed — нет")
+            continue
+        scale = b.get("scale", 1.0)
+        if not isinstance(scale, (int, float)) or isinstance(scale, bool):
+            errors.append(f"{bp}.scale: ожидается число")
+            continue
+        binds.append(JournalBind(
+            observed=observed, decoded=decoded, scale=float(scale),
+            boolean=bool(b.get("boolean", False)),
+            status=bool(b.get("status", False)),
+        ))
+
+    if not actions and not status_map and not binds:
+        return None                    # пустая секция — считаем, что её нет
+    return JournalSpec(actions=actions, status_map=status_map, binds=binds)
 
 
 def parse_schema(data: Any, source_text: str = "", source_path: str = "") -> Schema:
@@ -575,7 +815,7 @@ def parse_schema(data: Any, source_text: str = "", source_path: str = "") -> Sch
     if root is None:
         raise SchemaError(errors)
     _check_keys(root, {"version", "name", "scope", "framing", "messages",
-                       "hypotheses"}, "корень", errors)
+                       "hypotheses", "journal"}, "корень", errors)
 
     version = root.get("version", 1)
     if version != 1:
@@ -629,11 +869,16 @@ def parse_schema(data: Any, source_text: str = "", source_path: str = "") -> Sch
         hyp_ids.add(h.id)
         hypotheses.append(h)
 
+    journal: Optional[JournalSpec] = None
+    if "journal" in root:
+        journal = _parse_journal(root.get("journal"), "journal", errors, msg_index)
+
     if errors:
         raise SchemaError(errors)
     return Schema(
         version=version, name=name, scope_directions=scope_dirs,
         framing=framing, messages=messages, hypotheses=hypotheses,
+        journal=journal,
         source_text=source_text, source_path=source_path,
     )
 

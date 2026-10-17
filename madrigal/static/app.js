@@ -25,6 +25,8 @@ const S = {
   interpStamp: null,   // {schemaSha, fileSha} — штампы применённой схемы
   corpus: null,        // последний отчёт проверки корпуса (R4)
   corpusStamp: null,   // {schemaSha} — схема, с которой прогнан корпус
+  journal: null,       // результат корреляции журнала действий (R2)
+  journalSel: null,    // id выбранного действия для панели сверки
 };
 
 const $ = (id) => document.getElementById(id);
@@ -170,6 +172,17 @@ function afterOpen(info) {
   $('interp-messages').innerHTML = '';
   updateStaleness();
 
+  S.journal = null;
+  S.journalSel = null;
+  $('journal-summary').innerHTML = '';
+  $('journal-table').innerHTML = '';
+  $('journal-detail').innerHTML =
+    '<div class="muted">выберите действие слева, чтобы увидеть сверку ' +
+    'полей и перейти к исходным байтам</div>';
+  $('journal-compare-out').innerHTML = '';
+  $('journal-compare').innerHTML = '';
+  $('journal-status').textContent = '';
+
   $('session-view').hidden = true;
   $('empty-state').hidden = S.sessions.length > 0;
   if (!S.sessions.length) {
@@ -277,6 +290,7 @@ function renderTabs() {
   $('tab-b2a').classList.toggle('active', S.pane === 'stream' && S.dir === 'b2a');
   $('tab-compare').classList.toggle('active', S.pane === 'compare');
   $('tab-interpret').classList.toggle('active', S.pane === 'interpret');
+  $('tab-journal').classList.toggle('active', S.pane === 'journal');
 }
 
 function showPane(pane) {
@@ -284,6 +298,7 @@ function showPane(pane) {
   $('stream-pane').hidden = pane !== 'stream';
   $('compare-pane').hidden = pane !== 'compare';
   $('interpret-pane').hidden = pane !== 'interpret';
+  $('journal-pane').hidden = pane !== 'journal';
   renderTabs();
 }
 
@@ -1086,6 +1101,146 @@ function updateStaleness() {
 }
 
 /** Переход из результата интерпретации к байтам в hex-представлении. */
+/* ================================================================ журнал (R2) */
+
+function verdictBadge(v) {
+  const cls = v === 'matched' ? 'ok' : (v === 'mismatch' ? 'bad' : 'warn');
+  return `<span class="badge ${cls}">${esc(v)}</span>`;
+}
+
+function fmtZulu(t) {
+  return new Date(t * 1000).toISOString().slice(11, 23) + 'Z';
+}
+
+async function runJournal() {
+  clearError();
+  if (!S.session) { showError('сперва выберите сессию'); return; }
+  if (!S.schema || !S.schema.present) {
+    showError('сперва загрузите схему (нужна секция journal)'); return;
+  }
+  const path = $('journal-path').value.trim();
+  if (!path) { showError('укажите путь к журналу действий (.csv)'); return; }
+  $('journal-status').textContent = 'сопоставляю…';
+  $('journal-detail').innerHTML =
+    '<div class="muted">выберите действие слева, чтобы увидеть сверку ' +
+    'полей и перейти к исходным байтам</div>';
+  try {
+    const d = await post('/api/journal', { path });
+    S.journal = d;
+    S.journalSel = null;
+    $('journal-status').textContent = '';
+    renderJournal();
+  } catch (e) {
+    $('journal-status').textContent = '';
+    showError(e.message);
+  }
+}
+
+function renderJournal() {
+  const d = S.journal;
+  if (!d) return;
+  const t = d.totals;
+  const warn = (d.journal.warnings || []).map(
+    (w) => `<div class="diag">журнал: ${esc(w)}</div>`).join('');
+  $('journal-summary').innerHTML =
+    '<div class="chips-row">' +
+    `<span class="chip">действий: ${d.matches.length}</span>` +
+    `<span class="chip ${t.matched ? 'ok' : ''}">сверено: ${t.matched}</span>` +
+    `<span class="chip ${t.mismatch ? 'bad' : 'ok'}">расхождений: ${t.mismatch}</span>` +
+    `<span class="chip ${t.missing ? 'bad' : 'ok'}">не найдено: ${t.missing}</span>` +
+    `<span class="chip ${t.incomplete ? 'warn' : 'ok'}">неполных: ${t.incomplete}</span>` +
+    `<span class="chip ${t.uncovered ? 'warn' : 'ok'}">вне интерпретации: ${t.uncovered}</span>` +
+    '</div>' +
+    `<div class="muted">журнал: ${esc(d.journal.path)} — действий этой записи ` +
+    `${d.journal.actions}` +
+    (d.journal.total !== d.journal.actions ? ` (из ${d.journal.total} в файле)` : '') +
+    '</div>' + warn;
+
+  $('journal-compare').innerHTML = (d.action_types || []).map(
+    (a) => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+
+  const rows = d.matches.map((m, i) => {
+    const req = m.request ? (m.request.id || 'вне инт.') : '—';
+    const resp = m.response ? (m.response.id || 'вне инт.') : '—';
+    return `<tr class="row journal-row" data-idx="${i}">` +
+      `<td class="mono">${esc(m.action_id)}</td>` +
+      `<td>${esc(m.action)}</td>` +
+      `<td>${esc(m.session)}${m.session_index != null ? ` (#${m.session_index})` : ''}</td>` +
+      `<td>${verdictBadge(m.verdict)}</td>` +
+      `<td class="mono">${esc(req)}</td>` +
+      `<td class="mono">${esc(resp)}</td>` +
+      `<td>${esc(m.note || '')}</td></tr>`;
+  }).join('');
+  $('journal-table').innerHTML =
+    '<table class="msg-table"><thead><tr>' +
+    '<th>действие</th><th>тип</th><th>сессия</th><th>вердикт</th>' +
+    '<th>запрос</th><th>ответ</th><th>примечание</th>' +
+    `</tr></thead><tbody>${rows}</tbody></table>` +
+    '<div class="muted pad">клик по строке — сверка полей и переход к байтам</div>';
+}
+
+function renderJournalDetail(idx) {
+  const d = S.journal;
+  if (!d) return;
+  const m = d.matches[idx];
+  if (!m) return;
+  S.journalSel = idx;
+  const rows = document.querySelectorAll('#journal-table .journal-row');
+  rows.forEach((r) => r.classList.toggle(
+    'active', parseInt(r.dataset.idx, 10) === idx));
+
+  const refLine = (label, ref) => {
+    if (!ref) return `<div class="muted">${label}: не найден в записи</div>`;
+    const jump = `<button class="jump" data-jump-sid="${ref.session}"` +
+      ` data-jump-dir="${esc(ref.direction)}" data-jump-off="${ref.start}"` +
+      ` data-jump-end="${ref.end}">к байтам</button>`;
+    const kind = ref.id ? `<b>${esc(ref.id)}</b>`
+      : '<span class="muted">вне интерпретации</span>';
+    return `<div>${label}: ${kind} · ${esc(ref.direction)} #${ref.index} · ` +
+      `байты ${ref.start}…${ref.end} · ${fmtZulu(ref.t0)} ${jump}</div>`;
+  };
+
+  const checks = (m.checks || []).length
+    ? (m.checks).map((c) => {
+        const ok = c.equal === true;
+        const bad = c.equal === false;
+        const cls = ok ? 'ok' : (bad ? 'bad' : '');
+        const mark = ok ? 'OK' : (bad ? 'FAIL' : '—');
+        return '<tr class="row">' +
+          `<td><span class="badge ${cls}">${mark}</span></td>` +
+          `<td class="mono">${esc(c.path)}</td>` +
+          `<td class="mono">${esc(JSON.stringify(c.observed))}</td>` +
+          `<td class="mono">${esc(JSON.stringify(c.decoded))}</td>` +
+          `<td class="muted">${esc(c.note || '')}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5" class="muted">поля не сверялись ' +
+      '(привязки отсутствуют либо обмен вне интерпретации)</td></tr>';
+
+  $('journal-detail').innerHTML =
+    `<h4>${esc(m.action_id)} · ${esc(m.action)} ${verdictBadge(m.verdict)}</h4>` +
+    (m.note ? `<div class="diag">${esc(m.note)}</div>` : '') +
+    `<div class="muted">сессия журнала ${esc(m.session)}` +
+    (m.session_index != null ? ` → сессия записи #${m.session_index}` : '') +
+    ` · строка ${m.row}</div>` +
+    `<div class="mono pad">параметры: ${esc(JSON.stringify(m.parameters))}</div>` +
+    `<div class="mono pad">наблюдено: ${esc(JSON.stringify(m.observed_result))}</div>` +
+    refLine('запрос', m.request) + refLine('ответ', m.response) +
+    '<table class="msg-table"><thead><tr><th></th><th>поле (журнал)</th>' +
+    '<th>журнал</th><th>запись</th><th></th></tr></thead>' +
+    `<tbody>${checks}</tbody></table>`;
+}
+
+function renderJournalCompare() {
+  const d = S.journal;
+  if (!d) return;
+  const action = $('journal-compare').value;
+  const text = (d.compare || {})[action];
+  $('journal-compare-out').innerHTML = text
+    ? `<h4>сопоставление примеров: ${esc(action)}</h4>` +
+      `<pre class="mono journal-cmp">${esc(text)}</pre>`
+    : '<div class="muted pad">нет примеров для этого действия</div>';
+}
+
 async function jumpToMessage(sid, dir, start, end) {
   clearError();
   if (!S.session || S.session.id !== sid) {
@@ -1172,6 +1327,7 @@ function init() {
   $('tab-b2a').addEventListener('click', () => setDir('b2a'));
   $('tab-compare').addEventListener('click', () => { fillCompareSelects(); showPane('compare'); });
   $('tab-interpret').addEventListener('click', () => showPane('interpret'));
+  $('tab-journal').addEventListener('click', () => showPane('journal'));
 
   $('btn-schema-check').addEventListener('click', checkSchema);
   $('btn-schema-load').addEventListener('click', loadSchemaFile);
@@ -1214,6 +1370,17 @@ function init() {
     }
   });
   $('interp-hypotheses').addEventListener('click', jumpFromResults);
+
+  $('btn-journal-run').addEventListener('click', runJournal);
+  $('btn-journal-compare').addEventListener('click', renderJournalCompare);
+  $('journal-path').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runJournal();
+  });
+  $('journal-table').addEventListener('click', (e) => {
+    const row = e.target.closest('tr.journal-row');
+    if (row) renderJournalDetail(parseInt(row.dataset.idx, 10));
+  });
+  $('journal-detail').addEventListener('click', jumpFromResults);
 
   $('prev-page').addEventListener('click', () => loadChunk(S.offset - PAGE));
   $('next-page').addEventListener('click', () => loadChunk(S.offset + PAGE));

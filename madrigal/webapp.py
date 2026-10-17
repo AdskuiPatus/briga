@@ -22,6 +22,16 @@ from . import __version__
 from .capture import CaptureError, open_capture
 from .corpus import CorpusError, verify_corpus
 from .interpreter import analyze_session, dir_result_to_dict, hyp_check_to_dict
+from .journal import (
+    JournalError,
+    collect_messages,
+    correlate,
+    filter_capture,
+    load_journal,
+    render_compare,
+    session_spans,
+    summarize,
+)
 from .jobs import Job, JobStore
 from .layers import parse_capture, tcp_flags_str
 from .limits import (
@@ -152,6 +162,11 @@ class ApplyBody(BaseModel):
     scope: str = "session"        # session | all
     session: int = 0
     max_messages: int = 500       # сколько сообщений на поток отдавать в JSON
+
+
+class JournalBody(BaseModel):
+    """Корреляция журнала действий с обменом открытой записи (R2)."""
+    path: str                    # путь к журналу CSV на сервере
 
 
 class VerifyBody(BaseModel):
@@ -541,6 +556,60 @@ def api_schema_apply(body: ApplyBody) -> dict:
                  "sha256": loaded.capture.sha256},
         "scope": body.scope,
         "sessions": sessions_out,
+    }
+
+
+@app.post("/api/journal")
+def api_journal(body: JournalBody) -> dict:
+    """Найти обмен, связанный с известным действием журнала, и сверить (R2).
+
+    Каждое действие журнала сопоставляется с запросом/ответом по сессии
+    (меткам времени пакетов) и типу сообщения; наблюдаемый результат
+    сверяется с декодированными полями ответа. Привязки берутся из
+    секции `journal` схемы — ядро не знает о протоколе.
+    """
+    loaded = _require()
+    schema = _require_schema()
+    if schema.journal is None:
+        raise HTTPException(400, "в схеме нет секции journal — сопоставление "
+                                 "действий с сообщениями невозможно")
+    path = body.path.strip().strip('"')
+    if not path:
+        raise HTTPException(400, "путь к журналу действий пуст")
+    try:
+        actions, warns = load_journal(path)
+    except JournalError as e:
+        raise HTTPException(400, "журнал действий непригоден: "
+                                 + "; ".join(e.errors))
+
+    acts = filter_capture(actions, loaded.capture.path)
+    if not acts:
+        raise HTTPException(404, "в журнале нет действий для этой записи "
+                                 f"({Path(loaded.capture.path).name})")
+
+    directions = schema.scope_directions or ["a2b", "b2a"]
+    msgs_by_session: Dict[int, list] = {}
+    for si in range(len(loaded.sessions)):
+        streams = {d: loaded.stream(si, d) for d in directions}
+        results, _hyps = analyze_session(schema, streams)
+        msgs_by_session[si] = collect_messages(si, streams, results,
+                                               loaded.timestamps)
+    spans = session_spans(loaded.sessions, loaded.timestamps)
+    matches = correlate(acts, msgs_by_session, spans, schema.journal)
+    action_types = sorted({a.action for a in acts})
+
+    return {
+        "schema": {"name": schema.name, "sha256": schema.sha256},
+        "file": {"path": loaded.capture.path,
+                 "sha256": loaded.capture.sha256},
+        "journal": {"path": str(path), "actions": len(acts),
+                    "total": len(actions), "warnings": warns},
+        "matches": [m.to_dict() for m in matches],
+        "totals": summarize(matches),
+        "action_types": action_types,
+        # сопоставление примеров по каждому типу действия (R2) — заранее,
+        # чтобы интерфейс не перезапускал корреляцию ради вида «сравнить»
+        "compare": {t: render_compare(matches, t) for t in action_types},
     }
 
 

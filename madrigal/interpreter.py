@@ -20,6 +20,9 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 from .reassembly import Stream
 from .schema import (
     FIXED_TYPES,
+    INT_TYPES,
+    RECORD_TYPE,
+    SIGNED_TYPES,
     TYPE_SIZE,
     FieldDef,
     FramingRule,
@@ -31,6 +34,7 @@ from .schema import (
 Value = Union[int, str, bytes, None]
 
 MAX_MESSAGE = 1 << 20   # защитный предел: сообщение больше 1 МиБ не разбирается
+MAX_RECORD_ELEMENTS = 65536   # защитный предел для поля-повтора
 
 
 @dataclass
@@ -52,7 +56,8 @@ class FieldResult:
         if isinstance(self.value, int) and self.known:
             size = TYPE_SIZE.get(self.type, 1)
             order = "big" if self.type.endswith("be") else "little"
-            return int(self.value).to_bytes(size, order).hex()
+            signed = self.type in SIGNED_TYPES
+            return int(self.value).to_bytes(size, order, signed=signed).hex()
         return None
 
     @property
@@ -159,14 +164,12 @@ def _decode(values: Sequence[Optional[int]], ftype: str) -> Value:
     data = bytes(values)  # type: ignore[arg-type]
     if ftype == "u8":
         return data[0]
-    if ftype == "u16le":
-        return int.from_bytes(data, "little")
-    if ftype == "u16be":
-        return int.from_bytes(data, "big")
-    if ftype == "u32le":
-        return int.from_bytes(data, "little")
-    if ftype == "u32be":
-        return int.from_bytes(data, "big")
+    if ftype == "i8":
+        return int.from_bytes(data, "little", signed=True)
+    if ftype in ("u16le", "i16le", "u32le", "i32le"):
+        return int.from_bytes(data, "little", signed=ftype.startswith("i"))
+    if ftype in ("u16be", "i16be", "u32be", "i32be"):
+        return int.from_bytes(data, "big", signed=ftype.startswith("i"))
     if ftype == "ascii":
         return data.decode("ascii", errors="replace")
     return data  # bytes
@@ -258,44 +261,75 @@ def _build_message(stream: Stream, schema: Schema, direction: str,
     # --- извлечение полей ---
     fields: Dict[str, FieldResult] = {}
     desc = bytearray(size)      # байты, попавшие в описанные поля
+
+    def mark(rel_start: int, rel_end: int) -> None:
+        for rel in range(max(0, rel_start), min(size, rel_end)):
+            desc[rel] = 1
+
+    def extract_scalar(name: str, offset: int, ftype: str,
+                       fsize: Optional[int]) -> FieldResult:
+        """Разобрать одно поле; fsize None — размер не определён."""
+        if fsize is None:
+            return FieldResult(name=name, offset=offset, size=None, type=ftype,
+                               value=None, known=False)
+        vals = mread(offset, fsize)
+        truncated = len(vals) < fsize
+        known = (not truncated) and all(v is not None for v in vals)
+        raw = bytes(v for v in vals if v is not None) if known else None
+        if ftype in INT_TYPES:
+            value: Value = _decode(vals, ftype) if known else None
+        elif ftype == "ascii":
+            value = _decode(vals, "ascii") if known else None
+        else:
+            value = raw
+        return FieldResult(name=name, offset=offset,
+                           size=fsize if not truncated else len(vals),
+                           type=ftype, value=value, known=known, raw=raw)
+
     if matched is not None:
         scalar_values: Dict[str, Value] = {}
         for f in matched.fields:
-            fsize: Optional[int] = TYPE_SIZE.get(f.type)
-            if f.type in VAR_TYPES:
-                if f.length is not None:
-                    fsize = f.length
-                elif f.from_field is not None:
-                    prev = scalar_values.get(f.from_field)
-                    fsize = prev if isinstance(prev, int) else None
-                else:
-                    fsize = max(0, size - f.offset)
-
-            if fsize is None:
-                fields[f.name] = FieldResult(
-                    name=f.name, offset=f.offset, size=None, type=f.type,
-                    value=None, known=False)
+            # --- поле-повтор: серия записей фиксированной длины ---
+            if f.is_record:
+                cnt = scalar_values.get(f.repeat_count) if f.repeat_count else None
+                rsize = f.repeat_size or 0
+                if not isinstance(cnt, int) or cnt < 0 or rsize <= 0:
+                    fields[f.name] = FieldResult(
+                        name=f.name, offset=f.offset, size=None, type=f.type,
+                        value=None, known=False)
+                    continue
+                nelem = min(cnt, MAX_RECORD_ELEMENTS)
+                for i in range(nelem):
+                    base = f.offset + i * rsize
+                    if base >= size:
+                        break          # записи за концом сообщения не разбираем
+                    for sub in f.subfields:
+                        ssize: Optional[int] = TYPE_SIZE.get(sub.type)
+                        if sub.type in VAR_TYPES:
+                            ssize = sub.length if sub.length is not None else max(
+                                0, rsize - sub.offset)
+                        sname = f"{f.name}[{i}].{sub.name}"
+                        fr = extract_scalar(sname, base + sub.offset, sub.type, ssize)
+                        fields[sname] = fr
+                mark(f.offset, f.offset + nelem * rsize)
                 continue
 
-            vals = mread(f.offset, fsize)
-            truncated = len(vals) < fsize
-            known = (not truncated) and all(v is not None for v in vals)
-            raw = bytes(v for v in vals if v is not None) if known else None
-            if f.type in FIXED_TYPES:
-                value: Value = _decode(vals, f.type) if known else None
-            elif f.type == "ascii":
-                value = _decode(vals, "ascii") if known else None
-            else:
-                value = raw
-            fields[f.name] = FieldResult(
-                name=f.name, offset=f.offset,
-                size=fsize if not truncated else len(vals),
-                type=f.type, value=value, known=known, raw=raw)
-            if f.type in FIXED_TYPES:
-                scalar_values[f.name] = value
-            # покрытие
-            for rel in range(max(0, f.offset), min(size, f.offset + fsize)):
-                desc[rel] = 1
+            # --- скалярное / переменное поле ---
+            fsize2: Optional[int] = TYPE_SIZE.get(f.type)
+            if f.type in VAR_TYPES:
+                if f.length is not None:
+                    fsize2 = f.length
+                elif f.from_field is not None:
+                    prev = scalar_values.get(f.from_field)
+                    fsize2 = prev if isinstance(prev, int) else None
+                else:
+                    fsize2 = max(0, size - f.offset)
+            fr = extract_scalar(f.name, f.offset, f.type, fsize2)
+            fields[f.name] = fr
+            if f.type in INT_TYPES:
+                scalar_values[f.name] = fr.value
+            if fsize2 is not None:
+                mark(f.offset, f.offset + fsize2)
 
     described = sum(desc)
     described_known = sum(1 for rel, flag in enumerate(desc)
@@ -462,13 +496,38 @@ def check_hypotheses(schema: Schema,
                         f"({len(a_msgs)}), {h.check.b.message} ({len(b_msgs)})")
             continue
 
-        pairs = min(len(a_msgs), len(b_msgs))
-        chk.pairs_total = pairs
-        chk.unpaired_a = [m.i for m in a_msgs[pairs:]]
-        chk.unpaired_b = [m.i for m in b_msgs[pairs:]]
+        # сопоставление пар: по порядку или по ключу корреляции (pair_by),
+        # устойчивое к пропускам и переупорядочиванию сообщений
+        paired: List[Tuple[MsgResult, MsgResult]]
+        if h.check.pair_by:
+            a_by: Dict[Union[int, str], MsgResult] = {}
+            for m in a_msgs:
+                k = _comparable(m, h.check.pair_by)
+                if k is not None:
+                    a_by.setdefault(k, m)
+            b_by: Dict[Union[int, str], MsgResult] = {}
+            for m in b_msgs:
+                k = _comparable(m, h.check.pair_by)
+                if k is not None:
+                    b_by.setdefault(k, m)
 
-        for k in range(pairs):
-            ma, mb = a_msgs[k], b_msgs[k]
+            def _ksort(k: Union[int, str]) -> Tuple[int, int, str]:
+                return (0, k, "") if isinstance(k, int) else (1, 0, str(k))
+
+            common = sorted(set(a_by) & set(b_by), key=_ksort)
+            paired = [(a_by[k], b_by[k]) for k in common]
+            a_paired = {id(x) for x, _ in paired}
+            b_paired = {id(y) for _, y in paired}
+            chk.unpaired_a = [m.i for m in a_msgs if id(m) not in a_paired]
+            chk.unpaired_b = [m.i for m in b_msgs if id(m) not in b_paired]
+        else:
+            npairs = min(len(a_msgs), len(b_msgs))
+            paired = [(a_msgs[k], b_msgs[k]) for k in range(npairs)]
+            chk.unpaired_a = [m.i for m in a_msgs[npairs:]]
+            chk.unpaired_b = [m.i for m in b_msgs[npairs:]]
+        chk.pairs_total = len(paired)
+
+        for ma, mb in paired:
             va = _comparable(ma, h.check.a.field)
             vb = _comparable(mb, h.check.b.field)
             if va is None or vb is None:
@@ -498,8 +557,8 @@ def check_hypotheses(schema: Schema,
             chk.result = "fail"
             chk.status_after = "refuted"
             chk.note = (f"опровергнуто на данных: контрпримеров "
-                        f"{len(chk.counterexamples)} из {pairs} пар")
-        elif pairs == 0:
+                        f"{len(chk.counterexamples)} из {chk.pairs_total} пар")
+        elif chk.pairs_total == 0:
             chk.result = "not_applicable"
         elif chk.pairs_unknown or chk.unpaired_a or chk.unpaired_b:
             chk.result = "incomplete"
@@ -514,7 +573,7 @@ def check_hypotheses(schema: Schema,
         else:
             chk.result = "pass"
             chk.status_after = "checked"
-            chk.note = f"подтверждено на {pairs} парах"
+            chk.note = f"подтверждено на {chk.pairs_total} парах"
     return out
 
 
